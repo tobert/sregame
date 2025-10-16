@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use crate::game_state::GameState;
+use crate::tilemap::CollisionMap;
 
 pub struct PlayerPlugin;
 
@@ -135,11 +136,34 @@ fn player_movement_input(
 
 fn apply_movement(
     time: Res<Time>,
+    collision_map: Option<Res<CollisionMap>>,
     mut query: Query<(&Velocity, &mut Transform), With<Player>>,
 ) {
+    const TILE_SIZE: f32 = 48.0;
+
     for (velocity, mut transform) in &mut query {
-        transform.translation.x += velocity.0.x * time.delta_secs();
-        transform.translation.y += velocity.0.y * time.delta_secs();
+        if velocity.0.length_squared() == 0.0 {
+            continue;
+        }
+
+        let delta_x = velocity.0.x * time.delta_secs();
+        let delta_y = velocity.0.y * time.delta_secs();
+        let new_x = transform.translation.x + delta_x;
+        let new_y = transform.translation.y + delta_y;
+
+        let can_move = if let Some(collision_map) = &collision_map {
+            let tile_x = ((new_x / TILE_SIZE) + (collision_map.width as f32 / 2.0)) as i32;
+            let tile_y = ((new_y / TILE_SIZE) + (collision_map.height as f32 / 2.0)) as i32;
+
+            collision_map.is_walkable(tile_x, tile_y)
+        } else {
+            true
+        };
+
+        if can_move {
+            transform.translation.x = new_x;
+            transform.translation.y = new_y;
+        }
     }
 }
 

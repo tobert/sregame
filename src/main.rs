@@ -3,10 +3,12 @@ use bevy::prelude::*;
 mod game_state;
 mod player;
 mod camera;
+mod tilemap;
 
-use game_state::{GameState, GameStatePlugin};
+use game_state::{GameState, GameStatePlugin, Scene};
 use player::PlayerPlugin;
 use camera::{CameraPlugin, MainCamera, CameraFollow};
+use tilemap::TilemapPlugin;
 
 fn main() {
     App::new()
@@ -27,6 +29,7 @@ fn main() {
             GameStatePlugin,
             PlayerPlugin,
             CameraPlugin,
+            TilemapPlugin,
         ))
         .add_systems(Startup, setup)
         .add_systems(OnEnter(GameState::Loading), on_enter_loading)
@@ -47,9 +50,13 @@ fn setup(mut commands: Commands) {
     info!("SRE Game initialized");
 }
 
-fn on_enter_loading(mut next_state: ResMut<NextState<GameState>>) {
+fn on_enter_loading(
+    mut next_state: ResMut<NextState<GameState>>,
+    mut next_scene: ResMut<NextState<Scene>>,
+) {
     info!("Entering Loading state");
     next_state.set(GameState::Playing);
+    next_scene.set(Scene::TownOfEndgame);
 }
 
 fn on_enter_playing() {
