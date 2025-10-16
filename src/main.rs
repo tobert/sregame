@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 
 mod game_state;
+mod player;
+
 use game_state::{GameState, GameStatePlugin};
+use player::PlayerPlugin;
 
 fn main() {
     App::new()
@@ -18,7 +21,10 @@ fn main() {
                     ..default()
                 })
         )
-        .add_plugins(GameStatePlugin)
+        .add_plugins((
+            GameStatePlugin,
+            PlayerPlugin,
+        ))
         .add_systems(Startup, setup)
         .add_systems(OnEnter(GameState::Loading), on_enter_loading)
         .add_systems(OnEnter(GameState::Playing), on_enter_playing)
