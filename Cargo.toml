@@ -1,0 +1,18 @@
+[package]
+name = "sregame"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = "0.17"
+bevy_ecs_tilemap = "0.17"
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Faster compile times during development
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
