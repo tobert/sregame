@@ -2,9 +2,11 @@ use bevy::prelude::*;
 
 mod game_state;
 mod player;
+mod camera;
 
 use game_state::{GameState, GameStatePlugin};
 use player::PlayerPlugin;
+use camera::{CameraPlugin, MainCamera, CameraFollow};
 
 fn main() {
     App::new()
@@ -24,6 +26,7 @@ fn main() {
         .add_plugins((
             GameStatePlugin,
             PlayerPlugin,
+            CameraPlugin,
         ))
         .add_systems(Startup, setup)
         .add_systems(OnEnter(GameState::Loading), on_enter_loading)
@@ -34,7 +37,12 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn(Camera2d);
+    commands.spawn((
+        Camera2d,
+        MainCamera,
+        CameraFollow::default(),
+        Transform::from_xyz(0.0, 0.0, 999.9),
+    ));
 
     info!("SRE Game initialized");
 }
