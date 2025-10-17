@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use crate::game_state::GameState;
 use crate::tilemap::CollisionMap;
+use crate::assets::GameAssets;
 
 pub struct PlayerPlugin;
 
@@ -62,10 +63,10 @@ const PLAYER_SPEED: f32 = 150.0;
 
 fn spawn_player(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    game_assets: Res<GameAssets>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
-    let texture = asset_server.load("textures/characters/Amy-Walking.png");
+    let texture = game_assets.player_sprite.clone();
 
     let layout = TextureAtlasLayout::from_grid(
         UVec2::new(48, 48),

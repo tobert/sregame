@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use crate::game_state::GameState;
 use crate::player::Player;
 use crate::dialogue::StartDialogueEvent;
+use crate::assets::GameAssets;
 
 pub struct NpcPlugin;
 
@@ -58,14 +59,14 @@ struct InteractionPrompt;
 
 pub fn spawn_npc(
     commands: &mut Commands,
-    asset_server: &AssetServer,
+    _game_assets: &GameAssets,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     position: Vec3,
-    sprite_sheet: &str,
+    sprite_handle: Handle<Image>,
     npc_data: Npc,
     dialogue: NpcDialogue,
 ) -> Entity {
-    let texture = asset_server.load(format!("textures/characters/{}", sprite_sheet));
+    let texture = sprite_handle;
 
     let layout = TextureAtlasLayout::from_grid(
         UVec2::new(48, 48),

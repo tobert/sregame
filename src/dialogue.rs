@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy::asset::AssetLoader;
 use crate::game_state::GameState;
+use crate::assets::GameAssets;
 use serde::Deserialize;
 
 #[derive(Deserialize, Asset, TypePath)]
@@ -105,12 +106,12 @@ impl DialogueQueue {
 
 fn spawn_dialogue_ui(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    game_assets: Res<GameAssets>,
     dialogue_queue: Option<Res<DialogueQueue>>,
 ) {
     info!("Spawning dialogue UI");
 
-    let font = asset_server.load("fonts/dialogue.ttf");
+    let font = game_assets.dialogue_font.clone();
 
     commands.spawn((
         DialogueRoot,

@@ -3,6 +3,7 @@ use bevy_ecs_tilemap::prelude::*;
 use crate::game_state::Scene;
 use crate::camera::{MainCamera, CameraFollow, CameraBounds};
 use crate::npc::{spawn_npc, Npc, NpcFacing, NpcDialogue};
+use crate::assets::GameAssets;
 
 pub struct TilemapPlugin;
 
@@ -60,7 +61,7 @@ impl CollisionMap {
 
 fn spawn_town_of_endgame(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    game_assets: Res<GameAssets>,
     mut camera_query: Query<&mut CameraFollow, With<MainCamera>>,
 ) {
     info!("Spawning Town of Endgame map");
@@ -70,7 +71,7 @@ fn spawn_town_of_endgame(
     const TILE_SIZE: TilemapTileSize = TilemapTileSize { x: 48.0, y: 48.0 };
     const GRID_SIZE: TilemapGridSize = TilemapGridSize { x: 48.0, y: 48.0 };
 
-    let texture_handle = asset_server.load("textures/tilesets/town_tileset.png");
+    let texture_handle = game_assets.town_tileset.clone();
 
     let map_size = TilemapSize { x: MAP_WIDTH, y: MAP_HEIGHT };
     let tilemap_entity = commands.spawn_empty().id();
@@ -160,17 +161,17 @@ fn despawn_map(
 
 fn spawn_test_npcs(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    game_assets: Res<GameAssets>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     info!("Spawning test NPCs");
 
     spawn_npc(
         &mut commands,
-        &asset_server,
+        &game_assets,
         &mut texture_atlas_layouts,
         Vec3::new(100.0, 100.0, 1.0),
-        "Nature.png",
+        game_assets.npc_nature.clone(),
         Npc {
             name: "Nyaanager Evie".to_string(),
             sprite_facing: NpcFacing::Down,

@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 mod game_state;
+mod assets;
 mod player;
 mod camera;
 mod tilemap;
@@ -8,6 +9,7 @@ mod dialogue;
 mod npc;
 
 use game_state::{GameState, GameStatePlugin, Scene};
+use assets::AssetsPlugin;
 use player::PlayerPlugin;
 use camera::{CameraPlugin, MainCamera, CameraFollow};
 use tilemap::TilemapPlugin;
@@ -31,6 +33,7 @@ fn main() {
         )
         .add_plugins((
             GameStatePlugin,
+            AssetsPlugin,
             PlayerPlugin,
             CameraPlugin,
             TilemapPlugin,
@@ -38,7 +41,6 @@ fn main() {
             NpcPlugin,
         ))
         .add_systems(Startup, setup)
-        .add_systems(OnEnter(GameState::Loading), on_enter_loading)
         .add_systems(OnEnter(GameState::Playing), on_enter_playing)
         .add_systems(OnEnter(GameState::Dialogue), on_enter_dialogue)
         .run();
@@ -55,17 +57,9 @@ fn setup(mut commands: Commands) {
     info!("SRE Game initialized");
 }
 
-fn on_enter_loading(
-    mut next_state: ResMut<NextState<GameState>>,
-    mut next_scene: ResMut<NextState<Scene>>,
-) {
-    info!("Entering Loading state");
-    next_state.set(GameState::Playing);
-    next_scene.set(Scene::TownOfEndgame);
-}
-
-fn on_enter_playing() {
+fn on_enter_playing(mut next_scene: ResMut<NextState<Scene>>) {
     info!("Entering Playing state - player can explore");
+    next_scene.set(Scene::TownOfEndgame);
 }
 
 fn on_enter_dialogue() {
