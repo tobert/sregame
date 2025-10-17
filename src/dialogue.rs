@@ -18,9 +18,9 @@ impl Plugin for DialoguePlugin {
         app.init_asset::<DialogueData>()
             .init_asset_loader::<DialogueDataLoader>()
             .add_message::<StartDialogueEvent>()
+            .add_systems(Update, handle_dialogue_events.run_if(in_state(GameState::Playing)))
             .add_systems(OnEnter(GameState::Dialogue), spawn_dialogue_ui)
             .add_systems(Update, (
-                handle_dialogue_events,
                 type_dialogue_text,
                 advance_dialogue,
             ).run_if(in_state(GameState::Dialogue)))
