@@ -40,11 +40,16 @@ pub struct CameraBounds {
 
 impl CameraBounds {
     pub fn from_map_size(width: f32, height: f32, camera_half_width: f32, camera_half_height: f32) -> Self {
+        let min_x = -width / 2.0 + camera_half_width;
+        let max_x = width / 2.0 - camera_half_width;
+        let min_y = -height / 2.0 + camera_half_height;
+        let max_y = height / 2.0 - camera_half_height;
+
         Self {
-            min_x: -width / 2.0 + camera_half_width,
-            max_x: width / 2.0 - camera_half_width,
-            min_y: -height / 2.0 + camera_half_height,
-            max_y: height / 2.0 - camera_half_height,
+            min_x: min_x.min(max_x),
+            max_x: max_x.max(min_x),
+            min_y: min_y.min(max_y),
+            max_y: max_y.max(min_y),
         }
     }
 
