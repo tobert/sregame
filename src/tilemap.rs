@@ -2,13 +2,17 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 use crate::game_state::Scene;
 use crate::camera::{MainCamera, CameraFollow, CameraBounds};
+use crate::npc::{spawn_npc, Npc, NpcFacing, NpcDialogue};
 
 pub struct TilemapPlugin;
 
 impl Plugin for TilemapPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(bevy_ecs_tilemap::TilemapPlugin)
-            .add_systems(OnEnter(Scene::TownOfEndgame), spawn_town_of_endgame)
+            .add_systems(OnEnter(Scene::TownOfEndgame), (
+                spawn_town_of_endgame,
+                spawn_test_npcs,
+            ).chain())
             .add_systems(OnExit(Scene::TownOfEndgame), despawn_map);
     }
 }
@@ -152,4 +156,33 @@ fn despawn_map(
     }
     commands.remove_resource::<CollisionMap>();
     info!("Map despawned");
+}
+
+fn spawn_test_npcs(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+) {
+    info!("Spawning test NPCs");
+
+    spawn_npc(
+        &mut commands,
+        &asset_server,
+        &mut texture_atlas_layouts,
+        Vec3::new(100.0, 100.0, 1.0),
+        "Nature.png",
+        Npc {
+            name: "Nyaanager Evie".to_string(),
+            sprite_facing: NpcFacing::Down,
+        },
+        NpcDialogue {
+            speaker: "Nyaanager Evie".to_string(),
+            portrait_path: "textures/portraits/Nature.png".to_string(),
+            lines: vec![
+                "I do my best to protect them but the pressure from Mahogany Row is getting to me.".to_string(),
+                "We had an incident last night but I told the team to take the day off.".to_string(),
+                "They needed rest more than we needed post-mortem heroics.".to_string(),
+            ],
+        },
+    );
 }
