@@ -7,6 +7,7 @@ mod camera;
 mod tilemap;
 mod dialogue;
 mod npc;
+mod map_data;
 
 use game_state::{GameState, GameStatePlugin, Scene};
 use assets::AssetsPlugin;

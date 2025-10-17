@@ -19,6 +19,16 @@ impl Plugin for AssetsPlugin {
 pub struct GameAssets {
     pub player_sprite: Handle<Image>,
     pub npc_nature: Handle<Image>,
+    pub npc_mando: Handle<Image>,
+    pub npc_sf_actor1: Handle<Image>,
+    pub npc_people1: Handle<Image>,
+    pub npc_monster: Handle<Image>,
+    pub npc_casey: Handle<Image>,
+    pub npc_actor1: Handle<Image>,
+    pub npc_actor2: Handle<Image>,
+    pub npc_evil: Handle<Image>,
+    pub npc_sf_monster: Handle<Image>,
+    pub npc_people4: Handle<Image>,
     pub town_tileset: Handle<Image>,
     pub portrait_nature: Handle<Image>,
     pub dialogue_font: Handle<Font>,
@@ -30,6 +40,16 @@ impl Default for GameAssets {
         Self {
             player_sprite: Handle::default(),
             npc_nature: Handle::default(),
+            npc_mando: Handle::default(),
+            npc_sf_actor1: Handle::default(),
+            npc_people1: Handle::default(),
+            npc_monster: Handle::default(),
+            npc_casey: Handle::default(),
+            npc_actor1: Handle::default(),
+            npc_actor2: Handle::default(),
+            npc_evil: Handle::default(),
+            npc_sf_monster: Handle::default(),
+            npc_people4: Handle::default(),
             town_tileset: Handle::default(),
             portrait_nature: Handle::default(),
             dialogue_font: Handle::default(),
@@ -88,6 +108,16 @@ fn start_asset_loading(
 
     game_assets.player_sprite = asset_server.load("textures/characters/Amy-Walking.png");
     game_assets.npc_nature = asset_server.load("textures/characters/Nature.png");
+    game_assets.npc_mando = asset_server.load("textures/characters/Mando.png");
+    game_assets.npc_sf_actor1 = asset_server.load("textures/characters/SF_Actor1.png");
+    game_assets.npc_people1 = asset_server.load("textures/characters/People1.png");
+    game_assets.npc_monster = asset_server.load("textures/characters/Monster.png");
+    game_assets.npc_casey = asset_server.load("textures/characters/casey.png");
+    game_assets.npc_actor1 = asset_server.load("textures/characters/Actor1.png");
+    game_assets.npc_actor2 = asset_server.load("textures/characters/Actor2.png");
+    game_assets.npc_evil = asset_server.load("textures/characters/Evil.png");
+    game_assets.npc_sf_monster = asset_server.load("textures/characters/SF_Monster.png");
+    game_assets.npc_people4 = asset_server.load("textures/characters/People4.png");
     game_assets.town_tileset = asset_server.load("textures/tilesets/town_tileset.png");
     game_assets.portrait_nature = asset_server.load("textures/portraits/Nature.png");
     game_assets.dialogue_font = asset_server.load("fonts/dialogue.ttf");
@@ -106,6 +136,16 @@ fn check_asset_loading(
 
     let all_loaded = asset_server.is_loaded_with_dependencies(&game_assets.player_sprite)
         && asset_server.is_loaded_with_dependencies(&game_assets.npc_nature)
+        && asset_server.is_loaded_with_dependencies(&game_assets.npc_mando)
+        && asset_server.is_loaded_with_dependencies(&game_assets.npc_sf_actor1)
+        && asset_server.is_loaded_with_dependencies(&game_assets.npc_people1)
+        && asset_server.is_loaded_with_dependencies(&game_assets.npc_monster)
+        && asset_server.is_loaded_with_dependencies(&game_assets.npc_casey)
+        && asset_server.is_loaded_with_dependencies(&game_assets.npc_actor1)
+        && asset_server.is_loaded_with_dependencies(&game_assets.npc_actor2)
+        && asset_server.is_loaded_with_dependencies(&game_assets.npc_evil)
+        && asset_server.is_loaded_with_dependencies(&game_assets.npc_sf_monster)
+        && asset_server.is_loaded_with_dependencies(&game_assets.npc_people4)
         && asset_server.is_loaded_with_dependencies(&game_assets.town_tileset)
         && asset_server.is_loaded_with_dependencies(&game_assets.portrait_nature)
         && asset_server.is_loaded_with_dependencies(&game_assets.dialogue_font);
