@@ -519,10 +519,8 @@
         "speaker": "Courage",
         "portrait": "Monster",
         "lines": [
-          "<WordWrap>I committed a buffer overflow fix right before Evie",
-          "rang the bell. I still have the cognitive zoomies so I'm going to",
-          "write some Rust!",
-          "<WordWrap>It's a full moon, the sky is clear, and I love coding.",
+          "I committed a buffer overflow fix right before Evie rang the bell. I still have the cognitive zoomies so I'm going to write some Rust!",
+          "It's a full moon, the sky is clear, and I love coding.",
           "Awooooooo!"
         ]
       }
@@ -537,12 +535,9 @@
         "speaker": "Ocean",
         "portrait": "People4",
         "lines": [
-          "<WordWrap>I'm not the best programmer and Luna's not the",
-          "best tester. As a pair we kick butt.",
-          "<WordWrap>It's almost as if we and the computers and the code",
-          "all become one in the simulation. ",
-          "<WordWrap>Heh, sorry. I don't know if it's the",
-          "cybernetics papers or Trek fics that make me like this."
+          "I'm not the best programmer and Luna's not the best tester. As a pair we kick butt.",
+          "It's almost as if we and the computers and the code all become one in the simulation.",
+          "Heh, sorry. I don't know if it's the cybernetics papers or Trek fics that make me like this."
         ]
       }
     },
@@ -556,12 +551,9 @@
         "speaker": "Nyaanager Evie",
         "portrait": "Nature",
         "lines": [
-          "<WordWrap>We had a tricky incident today so I took the pager",
-          "and told my team to scram.",
-          "<WordWrap>I love my team and they totally rock. I do my best to",
-          "protect them but the pressure from Mahogany Row is getting to me.",
-          "<WordWrap>I can't get promoted without driving my team harder",
-          "and I know in my toebeans that it would halt their growth."
+          "We had a tricky incident today so I took the pager and told my team to scram.",
+          "I love my team and they totally rock. I do my best to protect them but the pressure from Mahogany Row is getting to me.",
+          "I can't get promoted without driving my team harder and I know in my toebeans that it would halt their growth."
         ]
       }
     },
@@ -575,12 +567,8 @@
         "speaker": "Seventh Daughter of Nine",
         "portrait": "People2",
         "lines": [
-          "<WordWrap>Oh yeah, we had an incident. I only know the gist",
-          "of it right now. We'll do interviews",
-          "next week after the team has processed a bit.",
-          "<WordWrap>Xela was bragging about the error budget",
-          "so we're comparing it to the timeline to incident estimate",
-          "customer impact."
+          "Oh yeah, we had an incident. I only know the gist of it right now. We'll do interviews next week after the team has processed a bit.",
+          "Xela was bragging about the error budget so we're comparing it to the timeline to incident estimate customer impact."
         ]
       }
     },
@@ -594,10 +582,8 @@
         "speaker": "Luna",
         "portrait": "People2",
         "lines": [
-          "<WordWrap>I paired with my bestie, Ocean today. I used to be",
-          "skeptical about pairing and now I'm one of THOSE PEOPLE.",
-          "<WordWrap>Nyaanager and Ocean were so paitent with me while I",
-          "got the hang of it. I look forward to it now."
+          "I paired with my bestie, Ocean today. I used to be skeptical about pairing and now I'm one of THOSE PEOPLE.",
+          "Nyaanager and Ocean were so paitent with me while I got the hang of it. I look forward to it now."
         ]
       }
     },
@@ -611,12 +597,9 @@
         "speaker": "Doctor Mcfire",
         "portrait": "DrMcfire",
         "lines": [
-          "<WordWrap>On-call is such a rush. One minute you're typing away",
-          "and the next you're the incident commander.",
-          "<WordWrap>When I went from the SLO alert to traces I immediately",
-          "knew I screwed up. Rolling forward was just as easy as",
-          "rollback so I cut a pull request.",
-          "<WordWrap>Some people complain but I love incidents.",
+          "On-call is such a rush. One minute you're typing away and the next you're the incident commander.",
+          "When I went from the SLO alert to traces I immediately knew I screwed up. Rolling forward was just as easy as rollback so I cut a pull request.",
+          "Some people complain but I love incidents.",
           "I should write a paper about them, that would be cool."
         ]
       }
@@ -631,11 +614,8 @@
         "speaker": "Hidaslo Xela",
         "portrait": "People3",
         "lines": [
-          "<WordWrap>I know I'm not supposed to gloat but the error budget",
-          "alert was the first to fire and we were on it before customers",
-          "noticed.",
-          "<WordWrap>Nobody else is doing SLOs yet. I believe SLOs will help",
-          "the Disco push back on Mahogany Row and keep Inferno honest."
+          "I know I'm not supposed to gloat but the error budget alert was the first to fire and we were on it before customers noticed.",
+          "Nobody else is doing SLOs yet. I believe SLOs will help the Disco push back on Mahogany Row and keep Inferno honest."
         ]
       }
     },
@@ -649,8 +629,7 @@
         "speaker": "Boba Jacobian",
         "portrait": "casey",
         "lines": [
-          "<WordWrap>Nyaanager runs a Westrum generative team. She doesn't",
-          "call it that though. This is the way."
+          "Nyaanager runs a Westrum generative team. She doesn't call it that though. This is the way."
         ]
       }
     }

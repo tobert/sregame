@@ -186,6 +186,10 @@ fn spawn_dialogue_ui(
                 },
                 TextColor(Color::WHITE),
                 TextLayout::new_with_justify(Justify::Left),
+                Node {
+                    max_width: Val::Px(1700.0),  // Allow wrapping at dialogue box width
+                    ..default()
+                },
                 TypewriterEffect::new(initial_text),
             ));
         });

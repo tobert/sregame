@@ -1341,8 +1341,7 @@
         "speaker": "Boba Jacobian",
         "portrait": "casey",
         "lines": [
-          "<WordWrap>Nyaanager runs a Westrum generative team. She doesn't",
-          "call it that though. This is the way."
+          "Nyaanager runs a Westrum generative team. She doesn't call it that though. This is the way."
         ]
       }
     },
@@ -1356,10 +1355,8 @@
         "speaker": "Desi Goner",
         "portrait": "SF_Actor1",
         "lines": [
-          "<WordWrap>The Boss from Team Inferno sent me here to finish up",
-          "the critical user journeys for themes or something?",
-          "<WordWrap>I asked all these people what the feature is",
-          "and got 19.2 answers!"
+          "The Boss from Team Inferno sent me here to finish up the critical user journeys for themes or something?",
+          "I asked all these people what the feature is and got 19.2 answers!"
         ]
       }
     },
@@ -1373,11 +1370,9 @@
         "speaker": "Tenchi",
         "portrait": "People1",
         "lines": [
-          "<WordWrap>We all love our work but we're having trouble with our velocity.",
-          "<WordWrap>We recently split up some of the projects to work on",
-          "more independently, so we could keep up with the incoming requests.",
-          "<WordWrap>As Polly Math predicted, they just asked for more and more",
-          "so we're all lonely and it's hard to help each other now."
+          "We all love our work but we're having trouble with our velocity.",
+          "We recently split up some of the projects to work on more independently, so we could keep up with the incoming requests.",
+          "As Polly Math predicted, they just asked for more and more so we're all lonely and it's hard to help each other now."
         ]
       }
     },
@@ -1391,9 +1386,8 @@
         "speaker": "Courage",
         "portrait": "Monster",
         "lines": [
-          "<WordWrap>Fixing the database schema was intense. Just thinking",
-          "about it gives me cognitive zoomies!",
-          "<WordWrap>It's a full moon, the sky is clear, and I love coding.",
+          "Fixing the database schema was intense. Just thinking about it gives me cognitive zoomies!",
+          "It's a full moon, the sky is clear, and I love coding.",
           "We're writing Rust tonight boys. Awooooooo!"
         ]
       }
@@ -1408,8 +1402,7 @@
         "speaker": "Casey",
         "portrait": "casey",
         "lines": [
-          "<WordWrap>If you know who I am I don't know why you're surprised",
-          "to find me here."
+          "If you know who I am I don't know why you're surprised to find me here."
         ]
       }
     },
@@ -1423,9 +1416,7 @@
         "speaker": "Nanny Ogg Vorbis",
         "portrait": "Amy",
         "lines": [
-          "nothin' over 'ere cept broken dreams and burnouts",
-          "It's not that bad, I just haven't done anything with this",
-          "part of the village yet :)"
+          "nothin' over 'ere cept broken dreams and burnouts It's not that bad, I just haven't done anything with this part of the village yet :)"
         ]
       }
     },
@@ -1439,18 +1430,11 @@
         "speaker": "Glenn Gary",
         "portrait": "Actor1",
         "lines": [
-          "<WordWrap>How am I supposed to sell this product when it",
-          "keeps crashing in front of prospects!?",
-          "<WordWrap>Inferno talks a big game but really their customers",
-          "are stuck with us so they put up with it. Our reputation is",
-          "not great.",
-          "<WordWrap>The Disco geeks always deliver, eventually. They're",
-          "never on time and releases are rough. They're always too busy",
-          "to talk.",
-          "<WordWrap>I hear the SREs are pretty good but I only know them",
-          "from incidents, so it's hard for me to tell.",
-          "<WordWrap>I talked to Mahogany peeps and they say everything is",
-          "fine. It is in fact, not fine. Except for Marathon, I don't get it."
+          "How am I supposed to sell this product when it keeps crashing in front of prospects!?",
+          "Inferno talks a big game but really their customers are stuck with us so they put up with it. Our reputation is not great.",
+          "The Disco geeks always deliver, eventually. They're never on time and releases are rough. They're always too busy to talk.",
+          "I hear the SREs are pretty good but I only know them from incidents, so it's hard for me to tell.",
+          "I talked to Mahogany peeps and they say everything is fine. It is in fact, not fine. Except for Marathon, I don't get it."
         ]
       }
     },
@@ -1464,18 +1448,11 @@
         "speaker": "Agi Lecoach",
         "portrait": "Actor2",
         "lines": [
-          "<WordWrap>I work with all the teams and it's unbelievable",
-          "how different",
-          "they are!",
-          "<WordWrap>The brass hangs out in Mahogany Row. They act like",
-          "they're the adults in the room but they're just people.",
-          "<WordWrap>Our SREs call themselves Team Marathon. They built us",
-          "one of the best platforms I've ever seen. And yet, we still have",
-          "incidents.",
-          "<WordWrap>Team Inferno usually delivers except most of the",
-          "time it doesn't work right.",
-          "<WordWrap>Team Disco tries so darn hard but their velocity is",
-          "all over the place."
+          "I work with all the teams and it's unbelievable how different they are!",
+          "The brass hangs out in Mahogany Row. They act like they're the adults in the room but they're just people.",
+          "Our SREs call themselves Team Marathon. They built us one of the best platforms I've ever seen. And yet, we still have incidents.",
+          "Team Inferno usually delivers except most of the time it doesn't work right.",
+          "Team Disco tries so darn hard but their velocity is all over the place."
         ]
       }
     },
@@ -1489,13 +1466,9 @@
         "speaker": "Alls Johnpaw",
         "portrait": "Evil",
         "lines": [
-          "<WordWrap>GAME OVER MAN!",
-          "<WordWrap>Haha not really. These folks have the best",
-          "SREs and infrastructure money can buy, and they still have",
-          "incidents!",
-          "<WordWrap>My implants are all messed up so I need you to help",
-          "these folks out with a retrospective. Get the story and show them",
-          "the way."
+          "GAME OVER MAN!",
+          "Haha not really. These folks have the best SREs and infrastructure money can buy, and they still have incidents!",
+          "My implants are all messed up so I need you to help these folks out with a retrospective. Get the story and show them the way."
         ]
       }
     },
@@ -1509,9 +1482,8 @@
         "speaker": "Johnny Mnemomena",
         "portrait": "SF_Monster",
         "lines": [
-          "<WordWrap>I never sleep anymore. No matter how many times",
-          "I train these fools, they keep writing bugs!",
-          "<WordWrap>Obviously this is proof that we need more training."
+          "I never sleep anymore. No matter how many times I train these fools, they keep writing bugs!",
+          "Obviously this is proof that we need more training."
         ]
       }
     },
@@ -1525,9 +1497,8 @@
         "speaker": "Frau Barella",
         "portrait": "People4",
         "lines": [
-          "<WordWrap>The great style unification of 2021 is the greatest",
-          "achievement of our career!",
-          "<WordWrap>Customers still complain about usability. It's like.",
+          "The great style unification of 2021 is the greatest achievement of our career!",
+          "Customers still complain about usability. It's like.",
           "Our stuff is great, but it doesn't quite come to gether."
         ]
       }

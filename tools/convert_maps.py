@@ -17,10 +17,18 @@ def convert_direction(rpgmaker_dir):
         8: "up"
     }.get(rpgmaker_dir, "down")
 
+def clean_dialogue_text(text):
+    """Clean up RPGMaker dialogue formatting"""
+    # Remove <WordWrap> tags
+    text = text.replace('<WordWrap>', '')
+    # Remove other common RPGMaker tags if present
+    text = text.replace('<br>', ' ')
+    return text.strip()
+
 def extract_dialogue_from_commands(commands):
     """Extract speaker, portrait, and dialogue lines from event commands"""
     portrait = ""
-    lines = []
+    raw_lines = []
 
     for cmd in commands:
         # Code 101 = Show Face (portrait)
@@ -29,7 +37,37 @@ def extract_dialogue_from_commands(commands):
 
         # Code 401 = Show Text (dialogue line)
         elif cmd['code'] == 401 and cmd['parameters']:
-            lines.append(cmd['parameters'][0])
+            raw_lines.append(cmd['parameters'][0])
+
+    # Clean and intelligently join lines
+    if not raw_lines:
+        return portrait, []
+
+    lines = []
+    current_paragraph = []
+
+    for line in raw_lines:
+        cleaned = clean_dialogue_text(line)
+        if not cleaned:
+            continue
+
+        # Check if this line seems like it was artificially split
+        # (doesn't end with punctuation, is short)
+        if current_paragraph:
+            last_line = current_paragraph[-1]
+            # If previous line doesn't end with sentence-ending punctuation, join it
+            if not last_line.rstrip().endswith(('.', '!', '?', '"', "'")):
+                current_paragraph.append(cleaned)
+            else:
+                # Previous line was complete, start new paragraph
+                lines.append(' '.join(current_paragraph))
+                current_paragraph = [cleaned]
+        else:
+            current_paragraph.append(cleaned)
+
+    # Add final paragraph
+    if current_paragraph:
+        lines.append(' '.join(current_paragraph))
 
     return portrait, lines
 
