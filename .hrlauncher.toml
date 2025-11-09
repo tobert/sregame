@@ -1,0 +1,40 @@
+# HalfRemembered Launcher Config for sregame
+#
+# This config automatically syncs the Windows build and assets to connected clients.
+# Usage: halfremembered-launcher config-sync --server user@host
+
+[project]
+name = "sregame"
+description = "Bevy-based space roguelike game"
+
+# Sync Windows executable and runtime DLLs
+[[sync]]
+name = "windows-binaries"
+include = [
+    "target/x86_64-pc-windows-msvc/debug/sregame.exe",
+    "target/x86_64-pc-windows-msvc/debug/*.dll",
+]
+destination = "~/src/sregame"
+clients = ["windows-*"]
+
+# Auto-execute after sync (optional)
+[sync.execute]
+command = "target/x86_64-pc-windows-msvc/debug/sregame.exe"
+args = ["--windowed"]  # Run in windowed mode for easier debugging
+working_dir = "~/src/sregame"
+
+[sync.execute.env]
+RUST_LOG = "info"  # Set log level
+RUST_BACKTRACE = "1"  # Enable backtraces for debugging
+
+# Sync game assets (textures, fonts, data)
+[[sync]]
+name = "game-assets"
+include = ["assets/**/*"]
+exclude = [
+    "**/*.psd",      # Photoshop source files
+    "**/*.blend",    # Blender source files
+    "**/.DS_Store",  # macOS metadata
+]
+destination = "~/src/sregame/assets/"
+mirror = true  # Keep assets directory clean

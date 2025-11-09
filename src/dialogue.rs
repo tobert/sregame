@@ -109,7 +109,14 @@ fn spawn_dialogue_ui(
     game_assets: Res<GameAssets>,
     dialogue_queue: Option<Res<DialogueQueue>>,
 ) {
-    info!("Spawning dialogue UI");
+    info!("🎨 spawn_dialogue_ui called");
+
+    if dialogue_queue.is_none() {
+        error!("❌ DialogueQueue resource not found!");
+        return;
+    }
+
+    info!("✅ DialogueQueue found, spawning UI");
 
     let font = game_assets.dialogue_font.clone();
 
@@ -186,10 +193,6 @@ fn spawn_dialogue_ui(
                 },
                 TextColor(Color::WHITE),
                 TextLayout::new_with_justify(Justify::Left),
-                Node {
-                    max_width: Val::Px(1700.0),  // Allow wrapping at dialogue box width
-                    ..default()
-                },
                 TypewriterEffect::new(initial_text),
             ));
         });
@@ -202,7 +205,10 @@ fn handle_dialogue_events(
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     for event in events.read() {
-        info!("Starting dialogue with: {}", event.speaker);
+        info!("📖 Starting dialogue with: {} ({} lines)", event.speaker, event.lines.len());
+        for (i, line) in event.lines.iter().enumerate() {
+            info!("   Line {}: {}", i, line);
+        }
 
         let queue = DialogueQueue::new(
             event.speaker.clone(),
@@ -211,6 +217,7 @@ fn handle_dialogue_events(
         );
 
         commands.insert_resource(queue);
+        info!("🎮 Transitioning to Dialogue state");
         next_state.set(GameState::Dialogue);
     }
 }
