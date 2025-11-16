@@ -19,7 +19,7 @@ clients = ["windows-*"]
 
 # Auto-execute after sync (optional)
 [sync.execute]
-command = "target/x86_64-pc-windows-msvc/debug/sregame.exe"
+command = "~/src/sregame/sregame.exe"  # Full path to synced executable
 args = ["--windowed"]  # Run in windowed mode for easier debugging
 working_dir = "~/src/sregame"
 

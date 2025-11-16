@@ -8,6 +8,7 @@ mod tilemap;
 mod dialogue;
 mod npc;
 mod map_data;
+mod telemetry;
 
 use game_state::{GameState, GameStatePlugin, Scene};
 use assets::AssetsPlugin;
@@ -18,6 +19,13 @@ use dialogue::DialoguePlugin;
 use npc::NpcPlugin;
 
 fn main() {
+    // Initialize OpenTelemetry BEFORE Bevy app
+    // This sets up the tracing subscriber before Bevy's LogPlugin does
+    let logger_provider = telemetry::init_telemetry()
+        .expect("Failed to initialize OpenTelemetry");
+
+    info!("🔭 OpenTelemetry initialized, sending logs to OTLP collector");
+
     App::new()
         .add_plugins(
             DefaultPlugins
@@ -31,6 +39,8 @@ fn main() {
                     }),
                     ..default()
                 })
+                // Disable Bevy's LogPlugin since we set up tracing ourselves
+                .disable::<bevy::log::LogPlugin>()
         )
         .add_plugins((
             GameStatePlugin,
@@ -45,6 +55,11 @@ fn main() {
         .add_systems(OnEnter(GameState::Playing), on_enter_playing)
         .add_systems(OnEnter(GameState::Dialogue), on_enter_dialogue)
         .run();
+
+    // Shutdown telemetry when app exits
+    if let Err(e) = telemetry::shutdown_telemetry(logger_provider) {
+        eprintln!("Failed to shutdown telemetry: {}", e);
+    }
 }
 
 fn setup(mut commands: Commands) {
