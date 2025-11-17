@@ -66,7 +66,7 @@ fn spawn_player(
     mut commands: Commands,
     game_assets: Res<GameAssets>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    tracer: Res<GameTracer>,
+    tracer: Option<Res<GameTracer>>,
     existing_players: Query<Entity, With<Player>>,
 ) {
     // Debug assertion: check for existing players before spawning
@@ -88,17 +88,20 @@ fn spawn_player(
     );
     let atlas_layout = texture_atlas_layouts.add(layout);
 
-    // Create session trace for this play session
-    let session_trace = PlayerSessionTrace::new(&tracer);
+    // Create session trace for this play session (if telemetry is enabled)
+    let session_trace = tracer.as_ref().map(|t| PlayerSessionTrace::new(t));
 
-    info!("🎮 Player session started - trace ID: {:?}", session_trace.span_context().trace_id());
+    if let Some(ref trace) = session_trace {
+        info!("🎮 Player session started - trace ID: {:?}", trace.span_context().trace_id());
+    } else {
+        info!("🎮 Player session started (telemetry disabled)");
+    }
 
-    commands.spawn((
+    let mut entity_commands = commands.spawn((
         Player,
         Velocity(Vec2::ZERO),
         Facing::default(),
         AnimationState::default(),
-        session_trace, // Attach session trace to player
         Sprite::from_atlas_image(
             texture,
             TextureAtlas {
@@ -109,6 +112,11 @@ fn spawn_player(
         Transform::from_xyz(0.0, 0.0, 1.0)
             .with_scale(Vec3::splat(2.0)),
     ));
+
+    // Attach session trace to player if telemetry is enabled
+    if let Some(trace) = session_trace {
+        entity_commands.insert(trace);
+    }
 
     info!("Player (Amy) spawned at origin");
 }

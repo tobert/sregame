@@ -206,7 +206,7 @@ fn handle_dialogue_events(
     mut commands: Commands,
     mut events: MessageReader<StartDialogueEvent>,
     mut next_state: ResMut<NextState<GameState>>,
-    tracer: Res<GameTracer>,
+    tracer: Option<Res<GameTracer>>,
 ) {
     for event in events.read() {
         info!("📖 Starting dialogue with: {} ({} lines)", event.speaker, event.lines.len());
@@ -214,33 +214,35 @@ fn handle_dialogue_events(
             info!("   Line {}: {}", i, line);
         }
 
-        // Create dialogue session span
-        // Note: This span will be a child of the current context (from NPC interaction)
-        let context = OtelContext::current();
-        let mut span = tracer.tracer()
-            .start_with_context("dialogue.session", &context);
+        // Create dialogue session span (if telemetry is enabled)
+        if let Some(tracer) = tracer.as_ref() {
+            // Note: This span will be a child of the current context (from NPC interaction)
+            let context = OtelContext::current();
+            let mut span = tracer.tracer()
+                .start_with_context("dialogue.session", &context);
 
-        span.set_attribute(KeyValue::new("dialogue.speaker", event.speaker.clone()));
-        span.set_attribute(KeyValue::new("dialogue.total_lines", event.lines.len() as i64));
+            span.set_attribute(KeyValue::new("dialogue.speaker", event.speaker.clone()));
+            span.set_attribute(KeyValue::new("dialogue.total_lines", event.lines.len() as i64));
 
-        // Add telemetry event for dialogue start
-        span.add_event(
-            "dialogue.resources_created",
-            vec![
-                KeyValue::new("queue.lines", event.lines.len() as i64),
-                KeyValue::new("queue.speaker", event.speaker.clone()),
-            ],
-        );
+            // Add telemetry event for dialogue start
+            span.add_event(
+                "dialogue.resources_created",
+                vec![
+                    KeyValue::new("queue.lines", event.lines.len() as i64),
+                    KeyValue::new("queue.speaker", event.speaker.clone()),
+                ],
+            );
 
-        // Store active dialogue component as resource
-        let active_dialogue = ActiveDialogue {
-            span,
-            start_time: Instant::now(),
-            speaker: event.speaker.clone(),
-            total_lines: event.lines.len(),
-            chars_read: 0,
-        };
-        commands.insert_resource(active_dialogue);
+            // Store active dialogue component as resource
+            let active_dialogue = ActiveDialogue {
+                span,
+                start_time: Instant::now(),
+                speaker: event.speaker.clone(),
+                total_lines: event.lines.len(),
+                chars_read: 0,
+            };
+            commands.insert_resource(active_dialogue);
+        }
 
         let queue = DialogueQueue::new(
             event.speaker.clone(),

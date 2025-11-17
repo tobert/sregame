@@ -1,7 +1,11 @@
 use bevy::prelude::*;
+use bevy::app::ScheduleRunnerPlugin;
+use bevy::window::ExitCondition;
+use bevy::winit::WinitPlugin;
 use bevy_remote::{RemotePlugin};
 use bevy_remote::http::RemoteHttpPlugin;
 use clap::Parser;
+use std::time::Duration;
 
 mod game_state;
 mod assets;
@@ -43,6 +47,11 @@ struct Args {
     /// Exit the game after N seconds
     #[arg(long)]
     seconds: Option<f32>,
+
+    /// Run in headless mode (no window, no GPU required)
+    /// Perfect for CI/CD, automated testing, and environments without display servers
+    #[arg(long)]
+    headless: bool,
 }
 
 fn main() {
@@ -102,21 +111,39 @@ fn main() {
     };
 
     let mut app = App::new();
-    app.add_plugins(
-        DefaultPlugins
-            .set(ImagePlugin::default_nearest())
-            .set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: "The Endgame of SRE".to_string(),
-                    resolution: (1920, 1080).into(),
-                    resizable: false,
+
+    if args.headless {
+        info!("🔧 Running in headless mode (no window, no display server required)");
+        app.add_plugins(
+            DefaultPlugins
+                .set(ImagePlugin::default_nearest())
+                .set(WindowPlugin {
+                    primary_window: None,
+                    exit_condition: ExitCondition::DontExit,
                     ..default()
-                }),
-                ..default()
-            })
-            // Disable Bevy's LogPlugin since we set up tracing ourselves
-            .disable::<bevy::log::LogPlugin>()
-    );
+                })
+                .disable::<WinitPlugin>()
+                .disable::<bevy::log::LogPlugin>()
+        )
+        .add_plugins(ScheduleRunnerPlugin::run_loop(
+            Duration::from_secs_f64(1.0 / 60.0)
+        ));
+    } else {
+        app.add_plugins(
+            DefaultPlugins
+                .set(ImagePlugin::default_nearest())
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "The Endgame of SRE".to_string(),
+                        resolution: (1920, 1080).into(),
+                        resizable: false,
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .disable::<bevy::log::LogPlugin>()
+        );
+    }
 
     if args.remote {
         app.add_plugins((RemotePlugin::default(), RemoteHttpPlugin::default()));
