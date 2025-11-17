@@ -4,6 +4,7 @@ use bevy::window::ExitCondition;
 use bevy::winit::WinitPlugin;
 use bevy_remote::{RemotePlugin};
 use bevy_remote::http::RemoteHttpPlugin;
+use bevy::window::{WindowMode, MonitorSelection};
 use clap::Parser;
 use std::time::Duration;
 
@@ -137,6 +138,7 @@ fn main() {
                         title: "The Endgame of SRE".to_string(),
                         resolution: (1920, 1080).into(),
                         resizable: false,
+                        mode: WindowMode::BorderlessFullscreen(MonitorSelection::Current),
                         ..default()
                     }),
                     ..default()

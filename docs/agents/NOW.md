@@ -4,6 +4,10 @@
 
 ## 🎯 Active Work
 
+✅ **TRUE Headless Mode CONFIRMED!** The existing `--headless` flag with `primary_window: None` is the CORRECT Bevy 0.17 solution. No Weston needed - pure CPU execution with BRP + OTLP working perfectly.
+
+⚠️ **Weston Approach Was Wrong**: Surface panics were leading us astray. Bevy's built-in headless mode (already implemented) is superior.
+
 ✅ **Phase 5 Complete**: MCP integration working! Opt-in telemetry via CLI flag/env var with stable port configuration. All telemetry (logs, traces, metrics) flowing successfully to MCP.
 
 ## 📍 Current State

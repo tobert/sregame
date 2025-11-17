@@ -157,8 +157,8 @@ fn handle_interaction_input(
     npc_query: Query<(&Transform, &NpcDialogue), (With<Npc>, With<InRange>)>,
     mut dialogue_events: MessageWriter<StartDialogueEvent>,
     asset_server: Res<AssetServer>,
-    tracer: Res<GameTracer>,
-    meter: Res<GameMeter>,
+    tracer: Option<Res<GameTracer>>,
+    meter: Option<Res<GameMeter>>,
 ) {
     if !keyboard.just_pressed(KeyCode::KeyE) {
         return;
@@ -186,28 +186,33 @@ fn handle_interaction_input(
     }
 
     if let Some((dialogue, distance)) = closest_npc {
-        // Start NPC interaction span
-        let mut span = start_npc_interaction_span(
-            &tracer,
-            session_trace,
-            &dialogue.speaker,
-            player_pos,
-            distance,
-        );
-
-        // Record interaction metric
-        meter.interactions_total.add(
-            1,
-            &[KeyValue::new("npc.name", dialogue.speaker.clone())]
-        );
-
         info!("🤝 NPC interaction started: {} (distance: {:.1}px)", dialogue.speaker, distance);
 
-        let portrait = asset_server.load(&dialogue.portrait_path);
+        // Telemetry: Start NPC interaction span (if available)
+        let telemetry_guard = if let (Some(tracer), Some(meter)) = (&tracer, &meter) {
+            let span = start_npc_interaction_span(
+                tracer,
+                session_trace,
+                &dialogue.speaker,
+                player_pos,
+                distance,
+            );
 
-        // Set this span as the current context for dialogue event processing
-        let context = opentelemetry::Context::current_with_value(span.span_context().clone());
-        let _guard = context.attach();
+            // Record interaction metric
+            meter.interactions_total.add(
+                1,
+                &[KeyValue::new("npc.name", dialogue.speaker.clone())]
+            );
+
+            // Set this span as the current context for dialogue event processing
+            let context = opentelemetry::Context::current_with_value(span.span_context().clone());
+            let guard = context.attach();
+            Some((span, guard))
+        } else {
+            None
+        };
+
+        let portrait = asset_server.load(&dialogue.portrait_path);
 
         dialogue_events.write(StartDialogueEvent {
             speaker: dialogue.speaker.clone(),
@@ -215,9 +220,10 @@ fn handle_interaction_input(
             lines: dialogue.lines.clone(),
         });
 
-        // Span ends here (dropped) - the interaction span is brief
-        // Dialogue will have its own child span (created in handle_dialogue_events)
-        drop(_guard);
-        span.end();
+        // Clean up telemetry span if it was created
+        if let Some((mut span, guard)) = telemetry_guard {
+            drop(guard);
+            span.end();
+        }
     }
 }

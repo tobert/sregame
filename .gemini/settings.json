@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "otlp-mcp": {
+      "command": "/home/atobey/src/otlp-mcp/otlp-mcp",
+      "args": [
+        "serve",
+        "--otlp-port",
+        "44317"
+      ],
+      "trust": true
+    }
+  }
+}
