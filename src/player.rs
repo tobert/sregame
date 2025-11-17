@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use crate::game_state::GameState;
 use crate::tilemap::CollisionMap;
 use crate::assets::GameAssets;
+use crate::instrumentation::{GameTracer, PlayerSessionTrace};
 
 pub struct PlayerPlugin;
 
@@ -65,7 +66,17 @@ fn spawn_player(
     mut commands: Commands,
     game_assets: Res<GameAssets>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    tracer: Res<GameTracer>,
+    existing_players: Query<Entity, With<Player>>,
 ) {
+    // Debug assertion: check for existing players before spawning
+    #[cfg(debug_assertions)]
+    {
+        let player_count = existing_players.iter().count();
+        if player_count > 0 {
+            error!("❌ Attempting to spawn player when {} already exist! Potential duplicate spawn.", player_count);
+        }
+    }
     let texture = game_assets.player_sprite.clone();
 
     let layout = TextureAtlasLayout::from_grid(
@@ -77,11 +88,17 @@ fn spawn_player(
     );
     let atlas_layout = texture_atlas_layouts.add(layout);
 
+    // Create session trace for this play session
+    let session_trace = PlayerSessionTrace::new(&tracer);
+
+    info!("🎮 Player session started - trace ID: {:?}", session_trace.span_context().trace_id());
+
     commands.spawn((
         Player,
         Velocity(Vec2::ZERO),
         Facing::default(),
         AnimationState::default(),
+        session_trace, // Attach session trace to player
         Sprite::from_atlas_image(
             texture,
             TextureAtlas {

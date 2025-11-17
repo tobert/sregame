@@ -3,6 +3,8 @@ use crate::game_state::GameState;
 use crate::player::Player;
 use crate::dialogue::StartDialogueEvent;
 use crate::assets::GameAssets;
+use crate::instrumentation::{GameTracer, GameMeter, PlayerSessionTrace, start_npc_interaction_span};
+use opentelemetry::{KeyValue, trace::{Span as _, Tracer}};
 
 pub struct NpcPlugin;
 
@@ -65,6 +67,7 @@ pub fn spawn_npc(
     sprite_handle: Handle<Image>,
     npc_data: Npc,
     dialogue: NpcDialogue,
+    tracer: Option<&GameTracer>,
 ) -> Entity {
     let texture = sprite_handle;
 
@@ -78,6 +81,28 @@ pub fn spawn_npc(
     let atlas_layout = texture_atlas_layouts.add(layout);
 
     let sprite_index = npc_data.sprite_facing as usize * 3 + 1;
+
+    // Validate sprite index in debug mode
+    #[cfg(debug_assertions)]
+    {
+        let max_index = 3 * 4 - 1; // 3x4 grid = indices 0-11
+        if sprite_index > max_index {
+            error!("❌ NPC sprite index {} exceeds grid bounds (max {})",
+                sprite_index, max_index);
+        }
+    }
+
+    // Add telemetry for NPC spawn
+    if let Some(t) = tracer {
+        let mut span = t.tracer().start("npc.spawned");
+        span.set_attribute(KeyValue::new("npc.name", npc_data.name.clone()));
+        span.set_attribute(KeyValue::new("npc.x", position.x as f64));
+        span.set_attribute(KeyValue::new("npc.y", position.y as f64));
+        span.set_attribute(KeyValue::new("npc.sprite_index", sprite_index as i64));
+        span.end();
+    }
+
+    info!("👤 NPC spawned: {} at ({:.0}, {:.0})", npc_data.name, position.x, position.y);
 
     commands.spawn((
         npc_data,
@@ -128,16 +153,18 @@ fn check_npc_proximity(
 
 fn handle_interaction_input(
     keyboard: Res<ButtonInput<KeyCode>>,
-    player_query: Query<&Transform, With<Player>>,
+    player_query: Query<(&Transform, &PlayerSessionTrace), With<Player>>,
     npc_query: Query<(&Transform, &NpcDialogue), (With<Npc>, With<InRange>)>,
     mut dialogue_events: MessageWriter<StartDialogueEvent>,
     asset_server: Res<AssetServer>,
+    tracer: Res<GameTracer>,
+    meter: Res<GameMeter>,
 ) {
     if !keyboard.just_pressed(KeyCode::KeyE) {
         return;
     }
 
-    let Ok(player_transform) = player_query.single() else {
+    let Ok((player_transform, session_trace)) = player_query.single() else {
         return;
     };
 
@@ -158,8 +185,29 @@ fn handle_interaction_input(
         }
     }
 
-    if let Some((dialogue, _)) = closest_npc {
+    if let Some((dialogue, distance)) = closest_npc {
+        // Start NPC interaction span
+        let mut span = start_npc_interaction_span(
+            &tracer,
+            session_trace,
+            &dialogue.speaker,
+            player_pos,
+            distance,
+        );
+
+        // Record interaction metric
+        meter.interactions_total.add(
+            1,
+            &[KeyValue::new("npc.name", dialogue.speaker.clone())]
+        );
+
+        info!("🤝 NPC interaction started: {} (distance: {:.1}px)", dialogue.speaker, distance);
+
         let portrait = asset_server.load(&dialogue.portrait_path);
+
+        // Set this span as the current context for dialogue event processing
+        let context = opentelemetry::Context::current_with_value(span.span_context().clone());
+        let _guard = context.attach();
 
         dialogue_events.write(StartDialogueEvent {
             speaker: dialogue.speaker.clone(),
@@ -167,6 +215,9 @@ fn handle_interaction_input(
             lines: dialogue.lines.clone(),
         });
 
-        info!("Interacting with: {}", dialogue.speaker);
+        // Span ends here (dropped) - the interaction span is brief
+        // Dialogue will have its own child span (created in handle_dialogue_events)
+        drop(_guard);
+        span.end();
     }
 }

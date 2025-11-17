@@ -1,4 +1,7 @@
 use bevy::prelude::*;
+use crate::instrumentation::ActiveDialogue;
+use crate::dialogue::DialogueQueue;
+use opentelemetry::{KeyValue, trace::Span as _};
 
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
 pub enum GameState {
@@ -41,11 +44,38 @@ fn handle_escape_key(
     keyboard: Res<ButtonInput<KeyCode>>,
     current_state: Res<State<GameState>>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut commands: Commands,
+    active_dialogue: Option<ResMut<ActiveDialogue>>,
 ) {
     if keyboard.just_pressed(KeyCode::Escape) {
         match current_state.get() {
             GameState::Dialogue => {
-                info!("Exiting dialogue mode");
+                info!("🚫 Force-exiting dialogue mode");
+
+                // Clean up dialogue resources with telemetry
+                if let Some(mut dialogue) = active_dialogue {
+                    let chars_read = dialogue.chars_read;
+
+                    // Add telemetry event for forced exit
+                    dialogue.span.add_event(
+                        "dialogue.forced_exit",
+                        vec![
+                            KeyValue::new("cleanup.type", "forced"),
+                            KeyValue::new("dialogue.completed", false),
+                            KeyValue::new("chars_read", chars_read as i64),
+                        ],
+                    );
+
+                    info!("📊 Dialogue force-closed: {} chars read", chars_read);
+
+                    // End span and remove resource
+                    dialogue.span.end();
+                    commands.remove_resource::<ActiveDialogue>();
+                }
+
+                // Remove dialogue queue
+                commands.remove_resource::<DialogueQueue>();
+
                 next_state.set(GameState::Playing);
             }
             _ => {}

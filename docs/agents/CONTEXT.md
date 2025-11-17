@@ -1,108 +1,30 @@
-# CONTEXT.md - Session Bridge
+## Headless Mode Implementation
 
-**Last Updated**: 2025-11-09 by Claude
+**Goal:** Implement a reliable headless testing environment for the Bevy 0.17 application, primarily for automated runs and use with the Bevy Remote Protocol.
 
-## 🎮 Project Quick Reference
+**Progress:**
+1.  **Lifetime Control:** Added `--frames <N>` and `--seconds <N>` command-line arguments to allow the application to run for a fixed duration and then exit gracefully. This is fully implemented and working.
+2.  **Headless Alias:** Created a `cargo headless` alias that uses the Cage Wayland compositor to provide a virtual display environment, allowing the Bevy application to run without a physical monitor.
+3.  **Code Simplification:** Refactored `main.rs` to remove all complex headless-specific logic. The application now uses a standard `DefaultPlugins` setup, making it agnostic to whether it's running in a graphical or headless environment.
 
-**What**: Educational SRE game (visual novel, no combat)
-**Tech**: Rust + Bevy 0.17, pixel art (48x48 tiles)
-**Status**: MVP functional, dialogue and NPC interaction working
-**Source**: `/home/atobey/src/sregame/`
+**Current Problem:**
+- The application consistently hangs (times out) when launched via `cargo headless`.
+- No application logs are produced, indicating the hang occurs very early in the Bevy initialization process, likely within the `winit` backend's connection to the Wayland compositor (`cage`).
 
-## 🔑 5 Key Facts for Next Agent
-
-1. **Bevy 0.17 specifics**: Use `ImagePlugin::default_nearest()`, camera Z = 999.9, required components auto-included
-2. **State system**: GameState (Loading/Playing/Dialogue) + Scene substates (TownOfEndgame/TeamMarathon)
-3. **Error handling**: Always use `anyhow::Result`, never `unwrap()`, add `.context()` for debugging
-4. **Asset structure**: Licensed Visustella content only, never default RPGMaker assets
-5. **Build plan**: Steps 01-02, 06-07, 09 complete; Steps 03-05, 08 pending (animations, sound, UI, portals)
-
-## 📂 Critical File Locations
-
-```
-src/
-├── main.rs              # App setup, plugin registration
-├── game_state.rs        # State management, debug keys
-├── player.rs            # Player movement, input
-├── camera.rs            # Camera follow with bounds
-├── tilemap.rs           # Map loading from JSON
-├── dialogue.rs          # Dialogue system, typewriter
-└── npc.rs               # NPC spawning, interaction
-
-assets/
-├── textures/            # Sprite sheets, tilesets
-├── fonts/               # Text rendering
-└── data/
-    ├── maps/            # *.map.json
-    └── dialogue/        # *.dialogue.json
-
-build-plan/              # Implementation guides
-docs/agents/             # Memory system (you are here)
-```
-
-## 🧪 How to Test
-
-```bash
-cargo run                    # Start game
-# Arrow keys: Move player
-# E: Interact with nearby NPC
-# Space: Advance dialogue
-# ESC: Exit dialogue / debug key changes
-# D: (removed) Test dialogue trigger
-```
-
-## 🚦 Current State Summary
-
-**Working:**
-- Player movement with keyboard
-- Camera following player with bounds
-- Tilemap rendering from JSON
-- NPC proximity detection
-- Dialogue system with typewriter effect
-- State transitions (Playing ↔ Dialogue)
-
-**Not Yet Implemented:**
-- Character animations (walk cycles)
-- Sound effects and music
-- Pause menu / save system
-- Map portals (scene transitions)
-- Quest/objective tracking
-- Additional maps beyond Town of Endgame
-
-## 🎯 Immediate Next Tasks (Pick Any)
-
-1. **Step 03**: Implement player sprite animations (4-direction walk cycles)
-2. **Step 04**: Add sound effects and background music
-3. **Step 05**: Create pause menu and UI systems
-4. **Step 08**: Implement portal system for map transitions
-5. **Content**: Port more dialogue from original game
-6. **Polish**: Improve dialogue text wrapping algorithm
-
-## 🤝 Handoff Checklist
-
-Before ending your session:
-- [ ] Update NOW.md with current state
-- [ ] Add new patterns to PATTERNS.md if discovered
-- [ ] Update this CONTEXT.md with any critical changes
-- [ ] Use `jj describe` to document your work
-- [ ] Run `cargo check` and `cargo test` to verify stability
-- [ ] Note any blockers or questions for next agent
-
-## 💡 Tips for Success
-
-1. **Read CLAUDE.md first** - Essential guidelines and patterns
-2. **Check build-plan/** - Detailed implementation steps with examples
-3. **Use bevy-expert agent** - For Bevy 0.17 API questions
-4. **Use endgame-sre-expert agent** - For original game content extraction
-5. **Always test after changes** - Game should build and run
-6. **Respect the asset license** - Visustella content only
-
-## 🔗 Related Resources
-
-- Original game: `/home/atobey/src/endgame-of-sre-rpgmaker-mz/`
-- Bevy 0.17 docs: https://docs.rs/bevy/0.17.0/
-- Build plan: `build-plan/00-overview.md`
-- Global instructions: `~/.claude/CLAUDE.md`
+**Next Steps:**
+The direct implementation is currently blocked. The immediate next step is to conduct a thorough research task to understand the specific requirements and potential pitfalls of running a Bevy 0.17 application within Cage.
 
 ---
-*Update this file when context significantly changes or before handoff*
+
+### 💎 Research Prompt for Gemini Agent
+
+**Objective:** Create a comprehensive guide on running a Bevy 0.17 application headlessly on Arch Linux using the Cage Wayland compositor.
+
+**Key Research Areas:**
+1.  **Bevy + `winit` + Wayland Interaction:** Deep dive into how Bevy's `winit` backend initializes on Wayland. What specific Wayland protocols and environment variables (`WAYLAND_DISPLAY`, `XDG_RUNTIME_DIR`, etc.) are absolutely required for it to succeed?
+2.  **Cage Environment:** What environment does `cage` provide to its child processes? Does it fully implement all necessary protocols for a complex graphical application like Bevy? Are there any known limitations or required configurations?
+3.  **Troubleshooting the Hang:** Investigate potential causes for a Bevy application to hang *before* the first `Update` loop when run inside `cage`. This should include checking for deadlocks in `winit`, missing GPU resources, or Wayland protocol mismatches.
+4.  **Best Practices:** Provide a step-by-step, verifiable example of a simple Bevy 0.17 application successfully running and exiting within `cage`. Include the necessary code, `Cargo.toml` dependencies, and the exact `cage` command to run it.
+5.  **Alternative Compositors:** Briefly evaluate if other headless Wayland compositors (e.g., `sway --unsupported-gpu`, `wlroots` headless backend) are better suited for this task and why.
+
+**Deliverable:** A Markdown document summarizing the findings with actionable code examples and configuration steps.

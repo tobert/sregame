@@ -1,0 +1,4 @@
+{
+  "comment": "sregame OpenTelemetry configuration - stable port for development",
+  "otlp_port": 4317
+}

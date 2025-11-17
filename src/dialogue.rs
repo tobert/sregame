@@ -2,7 +2,10 @@ use bevy::prelude::*;
 use bevy::asset::AssetLoader;
 use crate::game_state::GameState;
 use crate::assets::GameAssets;
+use crate::instrumentation::{GameTracer, GameMeter, ActiveDialogue, record_dialogue_line_event};
+use opentelemetry::{KeyValue, Context as OtelContext, trace::{Tracer, Span as _}};
 use serde::Deserialize;
+use std::time::Instant;
 
 #[derive(Deserialize, Asset, TypePath)]
 pub struct DialogueData {
@@ -73,7 +76,7 @@ impl TypewriterEffect {
 }
 
 #[derive(Resource)]
-struct DialogueQueue {
+pub struct DialogueQueue {
     speaker: String,
     portrait: Option<Handle<Image>>,
     lines: Vec<String>,
@@ -203,12 +206,41 @@ fn handle_dialogue_events(
     mut commands: Commands,
     mut events: MessageReader<StartDialogueEvent>,
     mut next_state: ResMut<NextState<GameState>>,
+    tracer: Res<GameTracer>,
 ) {
     for event in events.read() {
         info!("📖 Starting dialogue with: {} ({} lines)", event.speaker, event.lines.len());
         for (i, line) in event.lines.iter().enumerate() {
             info!("   Line {}: {}", i, line);
         }
+
+        // Create dialogue session span
+        // Note: This span will be a child of the current context (from NPC interaction)
+        let context = OtelContext::current();
+        let mut span = tracer.tracer()
+            .start_with_context("dialogue.session", &context);
+
+        span.set_attribute(KeyValue::new("dialogue.speaker", event.speaker.clone()));
+        span.set_attribute(KeyValue::new("dialogue.total_lines", event.lines.len() as i64));
+
+        // Add telemetry event for dialogue start
+        span.add_event(
+            "dialogue.resources_created",
+            vec![
+                KeyValue::new("queue.lines", event.lines.len() as i64),
+                KeyValue::new("queue.speaker", event.speaker.clone()),
+            ],
+        );
+
+        // Store active dialogue component as resource
+        let active_dialogue = ActiveDialogue {
+            span,
+            start_time: Instant::now(),
+            speaker: event.speaker.clone(),
+            total_lines: event.lines.len(),
+            chars_read: 0,
+        };
+        commands.insert_resource(active_dialogue);
 
         let queue = DialogueQueue::new(
             event.speaker.clone(),
@@ -225,9 +257,14 @@ fn handle_dialogue_events(
 fn type_dialogue_text(
     time: Res<Time>,
     mut query: Query<(&mut Text, &mut TypewriterEffect), With<DialogueTextNode>>,
+    mut active_dialogue: Option<ResMut<ActiveDialogue>>,
+    dialogue_queue: Option<Res<DialogueQueue>>,
+    meter: Res<GameMeter>,
 ) {
     for (mut text, mut typewriter) in &mut query {
-        if typewriter.is_complete() {
+        let was_complete = typewriter.is_complete();
+
+        if was_complete {
             continue;
         }
 
@@ -237,6 +274,31 @@ fn type_dialogue_text(
             if let Some(next_char) = typewriter.full_text.chars().nth(typewriter.current_index) {
                 text.push(next_char);
                 typewriter.current_index += 1;
+
+                // Track characters read
+                if let Some(ref mut dialogue) = active_dialogue {
+                    dialogue.chars_read += 1;
+                }
+            }
+        }
+
+        // Record event when line completes
+        if !was_complete && typewriter.is_complete() {
+            if let (Some(dialogue), Some(queue)) = (&mut active_dialogue, &dialogue_queue) {
+                record_dialogue_line_event(
+                    &mut dialogue.span,
+                    &typewriter.full_text,
+                    queue.current_line,
+                );
+
+                // Record line counter metric
+                meter.dialogue_lines_read.add(1, &[
+                    KeyValue::new("speaker", dialogue.speaker.clone())
+                ]);
+
+                info!("📝 Dialogue line {} complete: {} chars",
+                    queue.current_line,
+                    typewriter.full_text.len());
             }
         }
     }
@@ -280,10 +342,56 @@ fn advance_dialogue(
 fn despawn_dialogue_ui(
     mut commands: Commands,
     dialogue_root: Query<Entity, With<DialogueRoot>>,
+    active_dialogue: Option<ResMut<ActiveDialogue>>,
+    meter: Res<GameMeter>,
 ) {
     for entity in &dialogue_root {
         commands.entity(entity).despawn();
     }
+
+    // Finalize dialogue session span and record metrics
+    if let Some(mut dialogue) = active_dialogue {
+        let duration_secs = dialogue.start_time.elapsed().as_secs_f64();
+        let chars_read = dialogue.chars_read;
+        let speaker = dialogue.speaker.clone();
+
+        // Calculate reading speed (chars/second)
+        let reading_speed = if duration_secs > 0.0 {
+            chars_read as f64 / duration_secs
+        } else {
+            0.0
+        };
+
+        // Add final attributes to span
+        dialogue.span.set_attribute(KeyValue::new("dialogue.chars_read", chars_read as i64));
+        dialogue.span.set_attribute(KeyValue::new("dialogue.duration_secs", duration_secs));
+        dialogue.span.set_attribute(KeyValue::new("dialogue.reading_speed", reading_speed));
+
+        // Record reading speed metric
+        meter.dialogue_reading_speed.record(
+            reading_speed,
+            &[KeyValue::new("speaker", speaker.clone())]
+        );
+
+        info!("📊 Dialogue session complete: {} chars in {:.2}s ({:.1} chars/sec)",
+            chars_read,
+            duration_secs,
+            reading_speed);
+
+        // Add telemetry event for resource cleanup
+        dialogue.span.add_event(
+            "dialogue.resources_removed",
+            vec![
+                KeyValue::new("cleanup.type", "normal"),
+                KeyValue::new("dialogue.completed", true),
+            ],
+        );
+
+        // Span ends when dropped (but we'll explicitly end it for clarity)
+        dialogue.span.end();
+        commands.remove_resource::<ActiveDialogue>();
+    }
+
     commands.remove_resource::<DialogueQueue>();
     info!("Dialogue UI despawned");
 }
@@ -300,12 +408,23 @@ impl AssetLoader for DialogueDataLoader {
         &self,
         reader: &mut dyn bevy::asset::io::Reader,
         _settings: &Self::Settings,
-        _load_context: &mut bevy::asset::LoadContext<'_>,
+        load_context: &mut bevy::asset::LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;
+
+        // Enhanced error context with file size and path info
         let dialogue_data: DialogueData = serde_json::from_slice(&bytes)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+            .map_err(|e| {
+                let error_msg = format!(
+                    "Failed to parse dialogue JSON (file: {}, size: {} bytes): {}",
+                    load_context.path().display(),
+                    bytes.len(),
+                    e
+                );
+                error!("{}", error_msg);
+                std::io::Error::new(std::io::ErrorKind::InvalidData, error_msg)
+            })?;
         Ok(dialogue_data)
     }
 

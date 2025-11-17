@@ -3,6 +3,7 @@ use bevy_ecs_tilemap::prelude::*;
 use crate::game_state::Scene;
 use crate::camera::{MainCamera, CameraFollow, CameraBounds};
 use crate::npc::{spawn_npc, Npc, NpcDialogue};
+use crate::instrumentation::GameTracer;
 use crate::assets::GameAssets;
 use crate::map_data::{MapData, tile_to_world, facing_from_string};
 
@@ -62,6 +63,7 @@ fn spawn_town_of_endgame(
     game_assets: Res<GameAssets>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut camera_query: Query<&mut CameraFollow, With<MainCamera>>,
+    tracer: Option<Res<GameTracer>>,
 ) {
     info!("Loading Town of Endgame from map data");
 
@@ -190,6 +192,7 @@ fn spawn_town_of_endgame(
                 portrait_path,
                 lines: npc_data.dialogue.lines.clone(),
             },
+            tracer.as_deref(),
         );
 
         info!("Spawned NPC: {} at tile ({}, {})", npc_data.name, npc_data.x, npc_data.y);

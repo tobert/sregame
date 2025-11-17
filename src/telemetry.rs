@@ -8,9 +8,12 @@ use anyhow::Context;
 
 /// Initialize OpenTelemetry with OTLP exporter
 /// Call this BEFORE creating the Bevy App
-pub fn init_telemetry() -> anyhow::Result<SdkLoggerProvider> {
-    // OTLP endpoint from MCP server
-    let endpoint = "http://127.0.0.1:44173";
+/// Returns Some((logger_provider, tokio_runtime)) if endpoint provided, None otherwise
+pub fn init_telemetry(endpoint: Option<String>) -> anyhow::Result<Option<(SdkLoggerProvider, tokio::runtime::Runtime)>> {
+    let endpoint = match endpoint {
+        Some(e) => e,
+        None => return Ok(None),
+    };
 
     // Create a Tokio runtime and build the exporter within it
     let runtime = tokio::runtime::Runtime::new()
@@ -22,14 +25,6 @@ pub fn init_telemetry() -> anyhow::Result<SdkLoggerProvider> {
             .with_endpoint(endpoint)
             .build()
     })?;
-
-    // Keep the runtime alive in a background thread
-    std::thread::spawn(move || {
-        runtime.block_on(async {
-            // Keep the runtime alive indefinitely
-            std::future::pending::<()>().await;
-        });
-    });
 
     // Create logger provider with batch processor
     let logger_provider = SdkLoggerProvider::builder()
@@ -64,7 +59,7 @@ pub fn init_telemetry() -> anyhow::Result<SdkLoggerProvider> {
         .with(fmt_layer)
         .init();
 
-    Ok(logger_provider)
+    Ok(Some((logger_provider, runtime)))
 }
 
 /// Clean shutdown of telemetry
