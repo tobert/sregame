@@ -55,6 +55,10 @@ struct Args {
     /// Perfect for CI/CD, automated testing, and environments without display servers
     #[arg(long)]
     headless: bool,
+
+    /// OTLP metric export interval in milliseconds (default: 10000)
+    #[arg(long)]
+    otlp_metric_interval: Option<u64>,
 }
 
 fn main() {
@@ -81,7 +85,11 @@ fn main() {
             info!("🔭 OpenTelemetry initialized, sending logs to OTLP collector");
 
             // Initialize instrumentation (traces and metrics)
-            match instrumentation::init_instrumentation(&runtime, otlp_endpoint.as_ref().unwrap()) {
+            match instrumentation::init_instrumentation(
+                &runtime, 
+                otlp_endpoint.as_ref().unwrap(),
+                args.otlp_metric_interval
+            ) {
                 Ok((tracer, meter, tracer_prov, meter_prov)) => {
                     info!("📊 Instrumentation initialized with traces and metrics");
                     (Some(logger), Some(runtime), Some(tracer), Some(meter), Some(tracer_prov), Some(meter_prov))

@@ -91,7 +91,12 @@ pub struct ActiveDialogue {
 /// Initialize OpenTelemetry tracer and meter
 /// Call this alongside init_telemetry() in main
 /// endpoint should match the one used for logging (e.g., "http://127.0.0.1:4317")
-pub fn init_instrumentation(runtime: &tokio::runtime::Runtime, endpoint: &str) -> anyhow::Result<(GameTracer, GameMeter, SdkTracerProvider, SdkMeterProvider)> {
+/// metric_interval_ms is the export interval in milliseconds (default: 10000ms)
+pub fn init_instrumentation(
+    runtime: &tokio::runtime::Runtime, 
+    endpoint: &str,
+    metric_interval_ms: Option<u64>
+) -> anyhow::Result<(GameTracer, GameMeter, SdkTracerProvider, SdkMeterProvider)> {
 
     // Create tracer provider
     let tracer_provider = runtime.block_on(async {
@@ -125,8 +130,10 @@ pub fn init_instrumentation(runtime: &tokio::runtime::Runtime, endpoint: &str) -
             .with_endpoint(endpoint)
             .build()?;
 
+        let interval = std::time::Duration::from_millis(metric_interval_ms.unwrap_or(10000));
+
         let reader = PeriodicReader::builder(exporter)
-            .with_interval(std::time::Duration::from_secs(10))
+            .with_interval(interval)
             .build();
 
         let provider = SdkMeterProvider::builder()
