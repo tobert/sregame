@@ -46,6 +46,7 @@ Current State: Headless mode provides no visual output. `screenshot.rs` examples
 ### Feature Requests
 
 #### 3.1. The "Matrix View" (ASCII/Semantic Map)
+*   **Status:** ✅ **Implemented** (via `SemanticViewportPlugin` in `src/viewport.rs`)
 *   **Concept:** Agents don't need 4K pixels; they need spatial relationships.
 *   **Implementation:** A system that runs every N frames (or on demand via BRP) and logs a representation of the viewport:
     ```

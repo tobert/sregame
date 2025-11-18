@@ -16,6 +16,7 @@ mod tilemap;
 mod dialogue;
 mod npc;
 mod map_data;
+mod viewport;
 mod telemetry;
 mod instrumentation;
 
@@ -26,6 +27,7 @@ use camera::{CameraPlugin, MainCamera, CameraFollow};
 use tilemap::TilemapPlugin;
 use dialogue::DialoguePlugin;
 use npc::NpcPlugin;
+use viewport::SemanticViewportPlugin;
 
 /// The Endgame of SRE - An educational game about Site Reliability Engineering
 #[derive(Parser, Debug, Clone, Resource)]
@@ -171,6 +173,7 @@ fn main() {
             TilemapPlugin,
             DialoguePlugin,
             NpcPlugin,
+            SemanticViewportPlugin,
         ))
         .add_systems(Startup, setup)
         .add_systems(OnEnter(GameState::Playing), on_enter_playing)
