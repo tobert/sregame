@@ -10,35 +10,43 @@ pub struct NpcPlugin;
 
 impl Plugin for NpcPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (
+        app.register_type::<Npc>()
+            .register_type::<NpcFacing>()
+            .register_type::<NpcDialogue>()
+            .register_type::<Interactable>()
+            .add_systems(Update, (
             check_npc_proximity,
             handle_interaction_input,
         ).chain().run_if(in_state(GameState::Playing)));
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 pub struct Npc {
     pub name: String,
     pub sprite_facing: NpcFacing,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Reflect, Default)]
 pub enum NpcFacing {
+    #[default]
     Down = 0,
     Left = 1,
     Right = 2,
     Up = 3,
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 pub struct NpcDialogue {
     pub speaker: String,
     pub portrait_path: String,
     pub lines: Vec<String>,
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 pub struct Interactable {
     pub radius: f32,
     pub prompt: String,
@@ -55,9 +63,6 @@ impl Default for Interactable {
 
 #[derive(Component)]
 struct InRange;
-
-#[derive(Component)]
-struct InteractionPrompt;
 
 pub fn spawn_npc(
     commands: &mut Commands,
@@ -153,7 +158,7 @@ fn check_npc_proximity(
 
 fn handle_interaction_input(
     keyboard: Res<ButtonInput<KeyCode>>,
-    player_query: Query<(&Transform, &PlayerSessionTrace), With<Player>>,
+    player_query: Query<(&Transform, Option<&PlayerSessionTrace>), With<Player>>,
     npc_query: Query<(&Transform, &NpcDialogue), (With<Npc>, With<InRange>)>,
     mut dialogue_events: MessageWriter<StartDialogueEvent>,
     asset_server: Res<AssetServer>,
@@ -189,7 +194,7 @@ fn handle_interaction_input(
         info!("🤝 NPC interaction started: {} (distance: {:.1}px)", dialogue.speaker, distance);
 
         // Telemetry: Start NPC interaction span (if available)
-        let telemetry_guard = if let (Some(tracer), Some(meter)) = (&tracer, &meter) {
+        let telemetry_guard = if let (Some(tracer), Some(meter), Some(session_trace)) = (&tracer, &meter, session_trace) {
             let span = start_npc_interaction_span(
                 tracer,
                 session_trace,

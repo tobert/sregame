@@ -28,7 +28,7 @@ fn main() -> anyhow::Result<()> {
     info!("🔭 OpenTelemetry initialized");
 
     // Initialize instrumentation (traces and metrics)
-    let (tracer, meter, tracer_provider, meter_provider) = sregame::instrumentation::init_instrumentation(&runtime, &endpoint.clone().unwrap())?;
+    let (tracer, meter, tracer_provider, meter_provider) = sregame::instrumentation::init_instrumentation(&runtime, &endpoint.clone().unwrap(), None)?;
 
     info!("📊 Instrumentation initialized");
     info!("🎮 Test example started");
@@ -38,24 +38,9 @@ fn main() -> anyhow::Result<()> {
     warn!("This is a warning message");
     error!("This is an error message");
 
-    // Record some metrics (histograms)
-    meter.frame_time.record(16.7, &[]);  // 60 FPS
-    meter.frame_time.record(33.3, &[]);  // 30 FPS spike
-    meter.frame_time.record(16.5, &[]);
-
-    meter.system_execution_time.record(
-        2.5,
-        &[KeyValue::new("system", "player_movement")]
-    );
-    meter.system_execution_time.record(
-        5.2,
-        &[KeyValue::new("system", "tilemap_render")]
-    );
-
-    meter.dialogue_reading_speed.record(15.0, &[]);  // 15 chars/sec
-    meter.dialogue_reading_speed.record(22.5, &[]);  // 22.5 chars/sec
-
-    // Record some counters
+    // Record some metrics
+    meter.dialogue_reading_speed.record(15.0, &[]);
+    meter.dialogue_reading_speed.record(22.5, &[]);
     meter.interactions_total.add(3, &[KeyValue::new("type", "npc")]);
     meter.dialogue_lines_read.add(12, &[]);
 

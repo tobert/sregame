@@ -8,6 +8,7 @@ use serde::Deserialize;
 use std::time::Instant;
 
 #[derive(Deserialize, Asset, TypePath)]
+#[allow(dead_code)]
 pub struct DialogueData {
     pub speaker: String,
     pub portrait: Option<String>,
@@ -100,10 +101,6 @@ impl DialogueQueue {
     fn advance(&mut self) -> bool {
         self.current_line += 1;
         self.current_line < self.lines.len()
-    }
-
-    fn is_complete(&self) -> bool {
-        self.current_line >= self.lines.len()
     }
 }
 
@@ -238,7 +235,6 @@ fn handle_dialogue_events(
                 span,
                 start_time: Instant::now(),
                 speaker: event.speaker.clone(),
-                total_lines: event.lines.len(),
                 chars_read: 0,
             };
             commands.insert_resource(active_dialogue);
@@ -261,7 +257,7 @@ fn type_dialogue_text(
     mut query: Query<(&mut Text, &mut TypewriterEffect), With<DialogueTextNode>>,
     mut active_dialogue: Option<ResMut<ActiveDialogue>>,
     dialogue_queue: Option<Res<DialogueQueue>>,
-    meter: Res<GameMeter>,
+    meter: Option<Res<GameMeter>>,
 ) {
     for (mut text, mut typewriter) in &mut query {
         let was_complete = typewriter.is_complete();
@@ -293,10 +289,11 @@ fn type_dialogue_text(
                     queue.current_line,
                 );
 
-                // Record line counter metric
-                meter.dialogue_lines_read.add(1, &[
-                    KeyValue::new("speaker", dialogue.speaker.clone())
-                ]);
+                if let Some(ref meter) = meter {
+                    meter.dialogue_lines_read.add(1, &[
+                        KeyValue::new("speaker", dialogue.speaker.clone())
+                    ]);
+                }
 
                 info!("📝 Dialogue line {} complete: {} chars",
                     queue.current_line,
@@ -345,7 +342,7 @@ fn despawn_dialogue_ui(
     mut commands: Commands,
     dialogue_root: Query<Entity, With<DialogueRoot>>,
     active_dialogue: Option<ResMut<ActiveDialogue>>,
-    meter: Res<GameMeter>,
+    meter: Option<Res<GameMeter>>,
 ) {
     for entity in &dialogue_root {
         commands.entity(entity).despawn();
@@ -369,11 +366,12 @@ fn despawn_dialogue_ui(
         dialogue.span.set_attribute(KeyValue::new("dialogue.duration_secs", duration_secs));
         dialogue.span.set_attribute(KeyValue::new("dialogue.reading_speed", reading_speed));
 
-        // Record reading speed metric
-        meter.dialogue_reading_speed.record(
-            reading_speed,
-            &[KeyValue::new("speaker", speaker.clone())]
-        );
+        if let Some(ref meter) = meter {
+            meter.dialogue_reading_speed.record(
+                reading_speed,
+                &[KeyValue::new("speaker", speaker.clone())]
+            );
+        }
 
         info!("📊 Dialogue session complete: {} chars in {:.2}s ({:.1} chars/sec)",
             chars_read,
