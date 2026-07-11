@@ -671,7 +671,24 @@
     true,
     true
   ],
-  "npcs": [],
+  "npcs": [
+    {
+      "name": "EV003",
+      "x": 8,
+      "y": 4,
+      "sprite": "Amy-Walking",
+      "facing": "down",
+      "dialogue": {
+        "speaker": "Amy",
+        "portrait": "Amy",
+        "lines": [
+          "The Endgame of SRE",
+          "Amy Tobey | @renice@hachyderm.io",
+          "Sr Principal Engineer @ Equinix"
+        ]
+      }
+    }
+  ],
   "exits": [
     {
       "trigger_x": 8,

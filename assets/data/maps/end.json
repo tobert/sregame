@@ -680,7 +680,7 @@
       "facing": "down",
       "dialogue": {
         "speaker": "Dave",
-        "portrait": "Amy",
+        "portrait": "Evil",
         "lines": [
           "GAME OVER MAN!",
           "Haha not really. $#@@*** this though. I gave them the best Kubers and somehow they always have excuses for their outages.",
@@ -696,10 +696,12 @@
       "sprite": "Nature",
       "facing": "down",
       "dialogue": {
-        "speaker": "EV003",
+        "speaker": "Amy Tobey",
         "portrait": "Amy",
         "lines": [
-          "The Endgame of SRE Amy Tobey | @renice@hachyderm.io Assets by VisuStella"
+          "The Endgame of SRE",
+          "Amy Tobey | @renice@hachyderm.io",
+          "Assets by VisuStella"
         ]
       }
     },
@@ -716,8 +718,7 @@
           "I work with all the teams and it's unbelievable how different they are!",
           "The brass hangs out in Mahogany Row. They act like they're the adults in the room but they're just people.",
           "Team Inferno usually delivers except most of the time it doesn't work right.",
-          "Team Marathon's velocity has been a straight line for 3 quarters straight. That must be world record.",
-          "They make it look so easy.",
+          "Team Marathon's velocity has been a straight line for 3 quarters straight. That must be world record. They make it look so easy.",
           "Team Disco tries so darn hard but their velocity is all over the place."
         ]
       }
@@ -750,8 +751,7 @@
         "portrait": "People4",
         "lines": [
           "The great style unification of 2021 is the greatest achievement of our career!",
-          "Customers still complain about usability. It's like.",
-          "Our stuff is great, but it doesn't quite come to gether."
+          "Customers still complain about usability. It's like. Our stuff is great, but it doesn't quite come to gether."
         ]
       }
     },
@@ -809,7 +809,8 @@
         "speaker": "Polly Math",
         "portrait": "People1",
         "lines": [
-          "I need to fix this bug then check in the code I started this morning but then BAM! an incident and tests to fix and patch my kernels Why would you bring up ADHD?"
+          "I need to fix this bug then check in the code I started this morning but then BAM! an incident and tests to fix and patch my kernels",
+          "Why would you bring up ADHD?"
         ]
       }
     },
@@ -884,8 +885,7 @@
         "portrait": "People3",
         "lines": [
           "Pandora opened up a lead for us. The customer loved the dark mode mockup.",
-          "I double clicked on that vision and had an epiphany.",
-          "What if customers could theme the whole site!? Should be easy.",
+          "I double clicked on that vision and had an epiphany. What if customers could theme the whole site!? Should be easy.",
           "I was so excited I texted my guy on Team Inferno. He dropped everything and started work on it right away."
         ]
       }
@@ -929,8 +929,7 @@
         "portrait": "SF_Monster",
         "lines": [
           "Why is it so hard for these meatbags to understand our SDLC? They call it Waterscrumfall, whatever that means.",
-          "These fools write down stories in messy English.",
-          "Hah! One thing at a time, that's the way!"
+          "These fools write down stories in messy English. Hah! One thing at a time, that's the way!"
         ]
       }
     },
@@ -1005,11 +1004,9 @@
         "speaker": "Tenex",
         "portrait": "Monster",
         "lines": [
-          "I don't get why these lazy jerks complain so much.",
-          "I worked 100 hours last week and look at me! I'm fine.",
+          "I don't get why these lazy jerks complain so much. I worked 100 hours last week and look at me! I'm fine.",
           "Mahogany Row loves me! They come straight to me with the most important work. Planning is for nerds.",
-          "Team Disco tries but they can't keep up with me.",
-          "Even when The Boss makes sure they work on my stories first they still screw it up.",
+          "Team Disco tries but they can't keep up with me. Even when The Boss makes sure they work on my stories first they still screw it up.",
           "Those geeks in Team Marathon go home at 5 o'clock every day. I heard they had an incident though, haha, serves 'em right."
         ]
       }
@@ -1057,8 +1054,7 @@
         "portrait": "SF_Actor3",
         "lines": [
           "I just go with the flow. I get paid either way so who am I to complain? My rate's the same for nonsense as it is for good work.",
-          "Who goes to work to be happy? I'm here for the money.",
-          "Now I must go, I just got a new ticket to work on."
+          "Who goes to work to be happy? I'm here for the money. Now I must go, I just got a new ticket to work on."
         ]
       }
     },
@@ -1115,7 +1111,7 @@
       "sprite": "People3",
       "facing": "down",
       "dialogue": {
-        "speaker": "Hidaslo Xena",
+        "speaker": "Hidaslo Xela",
         "portrait": "People3",
         "lines": [
           "I know I'm not supposed to gloat but the error budget alert was the first to fire and we were on it before customers noticed."
@@ -1175,7 +1171,7 @@
       "sprite": "DrMcfire",
       "facing": "down",
       "dialogue": {
-        "speaker": "Doctor Mcfire",
+        "speaker": "Doctor McFire",
         "portrait": "DrMcfire",
         "lines": [
           "Coordinating tricky incidents is like slaying as a lead guitar on stage.",

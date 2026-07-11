@@ -133,6 +133,45 @@ mod tests {
         assert!(world.get_resource::<PendingArrival>().is_none());
     }
 
+    // Intro's real, converted exit (assets/data/maps/intro.json) - the one
+    // door out of the game's opening scene, back to Town of Endgame.
+    fn intro_exits() -> Vec<ExitData> {
+        vec![
+            ExitData { trigger_x: 8, trigger_y: 1, target_scene: "TownOfEndgame".into(), target_spawn_x: 16, target_spawn_y: 23 },
+        ]
+    }
+
+    #[test]
+    fn player_on_intro_door_triggers_town_of_endgame() {
+        // Intro (Map010, 17x13) has exactly one exit in the original data:
+        // walking onto tile (8, 1) transfers to Town of Endgame at (16,
+        // 23). This pins that behavior so a future re-conversion or edit
+        // can't silently break the game's very first scene transition.
+        // Built directly (not via the module's `setup_world` helper, which
+        // hardcodes Town of Endgame's 34x39 dimensions) so the CollisionMap
+        // size matches Intro's real map.
+        const WIDTH: u32 = 17;
+        const HEIGHT: u32 = 13;
+
+        let mut world = World::new();
+        world.init_resource::<NextState<Scene>>();
+        world.insert_resource(MapExits(intro_exits()));
+        world.insert_resource(CollisionMap::new(WIDTH, HEIGHT));
+        let world_pos = tile_to_world(8, 1, WIDTH, HEIGHT);
+        world.spawn((Player, Transform::from_xyz(world_pos.x, world_pos.y, 1.0)));
+
+        world.run_system_once(check_map_exits).unwrap();
+
+        let next = world.resource::<NextState<Scene>>();
+        assert!(
+            matches!(next, NextState::Pending(Scene::TownOfEndgame)),
+            "expected a pending transition to TownOfEndgame, got {next:?}"
+        );
+
+        let arrival = world.resource::<PendingArrival>();
+        assert_eq!((arrival.spawn_x, arrival.spawn_y), (16, 23));
+    }
+
     #[test]
     fn each_town_door_targets_its_real_destination() {
         // Covers all four real doors (not just the Retro one above) so a

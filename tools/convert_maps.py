@@ -14,6 +14,7 @@ build time; the Rust/Bevy side only ever consumes plain atlas indices.
 """
 
 import json
+from collections import Counter
 from pathlib import Path
 
 from PIL import Image
@@ -88,72 +89,198 @@ def clean_dialogue_text(text):
     return text.strip()
 
 
-def extract_dialogue_from_commands(commands):
-    """Extract speaker, portrait, and dialogue lines from event commands"""
-    portrait = ""
-    raw_lines = []
+def _majority_vote(values, fallback):
+    """Pick the most frequent value in `values`, breaking ties by first
+    occurrence (deterministic), or `fallback` if `values` is empty."""
+    if not values:
+        return fallback
+    counts = Counter(values)
+    best_count = max(counts.values())
+    for value in values:
+        if counts[value] == best_count:
+            return value
+    return fallback  # unreachable: values is non-empty
+
+
+def extract_dialogue_from_commands(commands, fallback_speaker, keep_lines_separate=False):
+    """Extract speaker, portrait, and dialogue lines from event commands.
+
+    Segmentation is keyed on code-101 "Show Face" boundaries, *not* on
+    sentence-ending punctuation (an earlier version of this function joined
+    consecutive code-401 "Show Text" lines into one paragraph until it saw a
+    line ending in one of . ! ? " ', which happened to work for most of this
+    game's prose but is not how RPGMaker MZ actually groups dialogue: each
+    code-101 call starts a new message box, and every code-401 line up to
+    the next code-101 belongs to that same box). Verified against the
+    already-shipped assets/data/maps/town_of_endgame.json: the old
+    punctuation heuristic silently mis-segmented several real NPCs there
+    (e.g. "Nanny Ogg Vorbis", whose second code-101 box is actually a
+    one-line aside from a *different* speaker, "Amy" - the old code glued
+    it onto Nanny Ogg's own line as one paragraph under Nanny Ogg's
+    portrait; e.g. "Courage" and "Frau Barella", where a genuine two-line
+    word-wrapped box got wrongly split into two paragraphs just because its
+    first line happened to end in a period).
+
+    Each code-101 box can also carry an optional 5th "Show Face" parameter
+    (a VisuStella MessageCore name-box override) that's the name actually
+    displayed above the text in-game - distinct from, and sometimes quite
+    different from, the event's own RPGMaker-editor name (e.g. Map002's
+    event "Alls Johnpaw" displays as "Paws Alljohn"; Map003's "Doctor
+    Mcfire" displays as "Doctor McFire"). A single NPC event can also
+    contain more than one code-101 box using more than one face/name - most
+    often because Amy (the player) briefly interjects a one-line aside
+    into an NPC's own conversation. Our NpcData/DialogueData format has
+    only one speaker/portrait per NPC interaction, so both the effective
+    speaker name and the portrait are resolved via majority vote across
+    all of this event's code-101 boxes (falling back to `fallback_speaker`,
+    normally the event's own editor name, if no box ever set a name-box
+    override) rather than "whichever code-101 happened to run last" - the
+    previous behavior, which for e.g. Map003's "Dave" (3 boxes as Dave, 1
+    one-line comeback as Amy) showed *Amy's* portrait for the entire
+    4-line interaction because hers was the last code-101 seen.
+
+    `keep_lines_separate`, when set, keeps every code-401 line in a box as
+    its own entry in the returned `lines` list instead of joining them with
+    spaces into one paragraph. The default (join) is correct for ordinary
+    word-wrapped prose, where a box's lines are fragments of one sentence
+    reflowed to fit the message window. It is wrong for the two "title
+    card" events this game uses for its opening/closing credits (Map010
+    event 3 and Map003 event 3): one code-101 box containing three short,
+    independent statements (a title, a byline, a role/credit line) with no
+    word-wrap tags and no sentence-ending punctuation to join on - joining
+    them produces one garbled run-on string. See EVENT_OVERRIDES.
+    """
+    groups = []
+    current = None
 
     for cmd in commands:
-        # Code 101 = Show Face (portrait)
+        # Code 101 = Show Face: starts a new message box.
         if cmd['code'] == 101 and cmd['parameters']:
-            portrait = cmd['parameters'][0]  # Face image name
+            params = cmd['parameters']
+            current = {
+                "portrait": params[0] if params[0] else "",
+                "speaker": params[4] if len(params) >= 5 and params[4] else "",
+                "raw_lines": [],
+            }
+            groups.append(current)
 
-        # Code 401 = Show Text (dialogue line)
+        # Code 401 = Show Text: one line within the current box.
         elif cmd['code'] == 401 and cmd['parameters']:
-            raw_lines.append(cmd['parameters'][0])
-
-    if not raw_lines:
-        return portrait, []
+            if current is None:
+                # Defensive: no game data we've seen has a bare Show Text
+                # with no preceding Show Face, but don't silently drop the
+                # line if it ever happens.
+                current = {"portrait": "", "speaker": "", "raw_lines": []}
+                groups.append(current)
+            current['raw_lines'].append(cmd['parameters'][0])
 
     lines = []
-    current_paragraph = []
+    portraits = []
+    speakers = []
 
-    for line in raw_lines:
-        cleaned = clean_dialogue_text(line)
+    for group in groups:
+        cleaned = [clean_dialogue_text(raw) for raw in group['raw_lines']]
+        cleaned = [c for c in cleaned if c]
         if not cleaned:
             continue
 
-        if current_paragraph:
-            last_line = current_paragraph[-1]
-            if not last_line.rstrip().endswith(('.', '!', '?', '"', "'")):
-                current_paragraph.append(cleaned)
-            else:
-                lines.append(' '.join(current_paragraph))
-                current_paragraph = [cleaned]
+        if keep_lines_separate:
+            lines.extend(cleaned)
         else:
-            current_paragraph.append(cleaned)
+            lines.append(' '.join(cleaned))
 
-    if current_paragraph:
-        lines.append(' '.join(current_paragraph))
+        if group['portrait']:
+            portraits.append(group['portrait'])
+        if group['speaker']:
+            speakers.append(group['speaker'])
 
-    return portrait, lines
+    speaker = _majority_vote(speakers, fallback_speaker)
+    portrait = _majority_vote(portraits, "")
+
+    return speaker, portrait, lines
 
 
-def extract_npcs(rpg_data):
+# Per-event overrides keyed by (source RPGMaker filename, event id), for the
+# rare cases that don't fit the generic extraction rules above. Keying by
+# filename+id (rather than inferring these structurally, e.g. "no sprite" or
+# "no sentence punctuation") means an override can never accidentally
+# misfire on some other, unrelated event.
+#
+# Map010 event 3 and Map003 event 3 are the *same* title/credits-card
+# content (RPGMaker's default "EV003" name for an unnamed event, in both
+# maps): one code-101 "Show Face" (portrait Amy) followed by three short,
+# independent lines (a title, a byline, a role/credit line) - not a
+# word-wrapped continuation of one sentence, so both need
+# keep_lines_separate (see extract_dialogue_from_commands) to avoid being
+# joined into one garbled run-on string.
+#
+#   - Map010 event 3 is the game's opening title card. In the source,
+#     image.characterName is empty - RPGMaker plays it as a scripted/
+#     autorun message with no overworld sprite at all, a different
+#     interaction paradigm (auto-display on map load) than every other
+#     piece of dialogue in this game (walk up + press E). Building a whole
+#     separate "autorun event" system in the Rust/Bevy side for this one
+#     title card would be real architecture scope creep for a single use,
+#     so we deliberately synthesize it as an ordinary walk-up NPC here at
+#     conversion time instead: reusing the player's own "Amy-Walking"
+#     sprite (it's Amy speaking) and "Amy" as both portrait and speaker
+#     name (the source event has no code-101 name-box override to fall
+#     back on, only an empty string). This is the mechanism by which that
+#     synthetic NPC survives a future re-run of this script rather than
+#     being a one-off hand-edit of intro.json that a re-conversion would
+#     silently discard.
+#   - Map003 event 3 is the closing credits version of the same content
+#     (its third line is "Assets by VisuStella" instead of a job title).
+#     It already has a real sprite ("Nature") in the source data, so it
+#     needs no sprite synthesis - just the same line-splitting override.
+EVENT_OVERRIDES = {
+    ("Map010.json", 3): {
+        "synthetic_sprite": "Amy-Walking",
+        "synthetic_speaker": "Amy",
+        "keep_lines_separate": True,
+    },
+    ("Map003.json", 3): {
+        "keep_lines_separate": True,
+    },
+}
+
+
+def extract_npcs(rpg_data, source_filename=""):
     npcs = []
     for event in rpg_data['events']:
         if event is None:
             continue
 
-        if not event['pages'] or not event['pages'][0]['image']['characterName']:
+        if not event['pages']:
             continue
 
         page = event['pages'][0]
         image = page['image']
+        override = EVENT_OVERRIDES.get((source_filename, event['id']), {})
 
-        portrait, lines = extract_dialogue_from_commands(page['list'])
+        if not image['characterName'] and 'synthetic_sprite' not in override:
+            continue
+
+        speaker, portrait, lines = extract_dialogue_from_commands(
+            page['list'],
+            fallback_speaker=event['name'],
+            keep_lines_separate=override.get('keep_lines_separate', False),
+        )
 
         if not lines:
             continue
+
+        if 'synthetic_speaker' in override:
+            speaker = override['synthetic_speaker']
 
         npcs.append({
             "name": event['name'],
             "x": event['x'],
             "y": event['y'],
-            "sprite": image['characterName'],
+            "sprite": image['characterName'] or override.get('synthetic_sprite'),
             "facing": convert_direction(image['direction']),
             "dialogue": {
-                "speaker": event['name'],
+                "speaker": speaker,
                 "portrait": portrait,
                 "lines": lines
             }
@@ -408,7 +535,7 @@ def convert_map(rpgmaker_map_path, output_path, tileset_entry, compositor):
         rpg_data, tileset_entry, compositor
     )
 
-    npcs = extract_npcs(rpg_data)
+    npcs = extract_npcs(rpg_data, rpgmaker_map_path.name)
     exits = extract_exits_from_events(rpg_data['events'])
 
     clean_data = {
