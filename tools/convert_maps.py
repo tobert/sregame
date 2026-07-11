@@ -1,13 +1,76 @@
 #!/usr/bin/env python3
 """
-One-time converter: RPGMaker MZ data → Clean game data format
-Converts Map*.json files to simplified map data for Bevy game
+One-time converter: RPGMaker MZ data -> Clean game data format.
+
+Converts Map*.json files (+ their tileset sheets) to:
+  - a simplified map data JSON for the Bevy game (tiles/upper_tiles/collision/npcs/exits)
+  - a single flattened, fully-composited PNG atlas per map
+
+Tile IDs are decoded and composited using the exact same autotile algorithm
+RPGMaker MZ's own engine uses (see tools/rpgmaker_tiles.py for the ported
+algorithm + source references). All RPGMaker-specific complexity (autotile
+shape tables, tileset flag bits, z-layer compositing order) lives here at
+build time; the Rust/Bevy side only ever consumes plain atlas indices.
 """
 
 import json
-import sys
 from pathlib import Path
 
+from PIL import Image
+
+from rpgmaker_tiles import (
+    TILE_SIZE,
+    apply_shadow,
+    is_fully_blocked,
+    is_higher_tile,
+    is_shadowing_tile,
+    is_table_tile,
+    load_tileset_sheets,
+    render_table_edge_overlay,
+    render_tile,
+)
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+RPGMAKER_ROOT = Path("/home/atobey/src/endgame-of-sre-rpgmaker-mz")
+RPGMAKER_DATA_DIR = RPGMAKER_ROOT / "data"
+RPGMAKER_TILESETS_DIR = RPGMAKER_ROOT / "img" / "tilesets"
+
+# Resolve output paths relative to this script's location (tools/../..), so
+# this always writes into whichever checkout/worktree it's run from rather
+# than a hardcoded path to a specific clone.
+REPO_ROOT = Path(__file__).resolve().parent.parent
+OUTPUT_MAPS_DIR = REPO_ROOT / "assets" / "data" / "maps"
+OUTPUT_TILESETS_DIR = REPO_ROOT / "assets" / "textures" / "tilesets"
+
+ATLAS_COLUMNS = 16
+
+# Number of z-layer "planes" RPGMaker MZ stores per map cell: 4 tile-graphic
+# layers + 1 shadow-pen layer + 1 region-ID layer. Confirmed empirically
+# against Map002.json/Map004.json (data.length == width*height*6) and
+# against rmmz_core.js's _readMapData/_addSpot (only z=0..4 are ever read
+# for rendering; z=5 is the region ID, unused here).
+EXPECTED_DATA_PLANES = 6
+
+# RPGMaker MZ map ID -> our Scene enum variant name (see MapInfos.json).
+# Map001 (debug) and Map008 (The War Room) are intentionally omitted: both
+# are empty/unused in the original game and have no corresponding Scene.
+MAP_ID_TO_SCENE = {
+    2: "TownOfEndgame",
+    3: "End",
+    4: "TeamMarathon",
+    5: "TeamDisco",
+    6: "TeamInferno",
+    7: "MahoganyRow",
+    9: "TeamMarathonRetro",
+    10: "Intro",
+}
+
+
+# ---------------------------------------------------------------------------
+# Dialogue/NPC extraction
+# ---------------------------------------------------------------------------
 def convert_direction(rpgmaker_dir):
     """Convert RPGMaker direction (2/4/6/8) to simple name"""
     return {
@@ -17,13 +80,13 @@ def convert_direction(rpgmaker_dir):
         8: "up"
     }.get(rpgmaker_dir, "down")
 
+
 def clean_dialogue_text(text):
     """Clean up RPGMaker dialogue formatting"""
-    # Remove <WordWrap> tags
     text = text.replace('<WordWrap>', '')
-    # Remove other common RPGMaker tags if present
     text = text.replace('<br>', ' ')
     return text.strip()
+
 
 def extract_dialogue_from_commands(commands):
     """Extract speaker, portrait, and dialogue lines from event commands"""
@@ -39,7 +102,6 @@ def extract_dialogue_from_commands(commands):
         elif cmd['code'] == 401 and cmd['parameters']:
             raw_lines.append(cmd['parameters'][0])
 
-    # Clean and intelligently join lines
     if not raw_lines:
         return portrait, []
 
@@ -51,48 +113,53 @@ def extract_dialogue_from_commands(commands):
         if not cleaned:
             continue
 
-        # Check if this line seems like it was artificially split
-        # (doesn't end with punctuation, is short)
         if current_paragraph:
             last_line = current_paragraph[-1]
-            # If previous line doesn't end with sentence-ending punctuation, join it
             if not last_line.rstrip().endswith(('.', '!', '?', '"', "'")):
                 current_paragraph.append(cleaned)
             else:
-                # Previous line was complete, start new paragraph
                 lines.append(' '.join(current_paragraph))
                 current_paragraph = [cleaned]
         else:
             current_paragraph.append(cleaned)
 
-    # Add final paragraph
     if current_paragraph:
         lines.append(' '.join(current_paragraph))
 
     return portrait, lines
 
-def simplify_tile_id(tile_id):
-    """Convert RPGMaker tile ID to simple 0-based index"""
-    if tile_id >= 2048:
-        return tile_id - 2048
-    elif tile_id >= 1536:
-        return tile_id - 1536
-    else:
-        return 0
 
-# RPGMaker MZ map ID -> our Scene enum variant name (see MapInfos.json).
-# Map001 (debug) and Map008 (The War Room) are intentionally omitted: both
-# are empty/unused in the original game and have no corresponding Scene.
-MAP_ID_TO_SCENE = {
-    2: "TownOfEndgame",
-    3: "End",
-    4: "TeamMarathon",
-    5: "TeamDisco",
-    6: "TeamInferno",
-    7: "MahoganyRow",
-    9: "TeamMarathonRetro",
-    10: "Intro",
-}
+def extract_npcs(rpg_data):
+    npcs = []
+    for event in rpg_data['events']:
+        if event is None:
+            continue
+
+        if not event['pages'] or not event['pages'][0]['image']['characterName']:
+            continue
+
+        page = event['pages'][0]
+        image = page['image']
+
+        portrait, lines = extract_dialogue_from_commands(page['list'])
+
+        if not lines:
+            continue
+
+        npcs.append({
+            "name": event['name'],
+            "x": event['x'],
+            "y": event['y'],
+            "sprite": image['characterName'],
+            "facing": convert_direction(image['direction']),
+            "dialogue": {
+                "speaker": event['name'],
+                "portrait": portrait,
+                "lines": lines
+            }
+        })
+    return npcs
+
 
 def extract_exits_from_events(events):
     """Extract Transfer Player (code 201) events as map exits.
@@ -126,13 +193,13 @@ def extract_exits_from_events(events):
                 designation, map_id, target_x, target_y, _direction, _fade_type = params
 
                 if designation != 0:
-                    print(f"  ⚠ Skipping variable-designated transfer in event "
+                    print(f"  Skipping variable-designated transfer in event "
                           f"'{event['name']}' (unsupported)")
                     continue
 
                 target_scene = MAP_ID_TO_SCENE.get(map_id)
                 if target_scene is None:
-                    print(f"  ⚠ Skipping transfer to unmapped mapId {map_id} "
+                    print(f"  Skipping transfer to unmapped mapId {map_id} "
                           f"in event '{event['name']}'")
                     continue
 
@@ -146,76 +213,229 @@ def extract_exits_from_events(events):
 
     return exits
 
-def convert_map(rpgmaker_map_path, output_path, extra_exits=None):
-    """Convert a single RPGMaker map to clean format"""
+
+# ---------------------------------------------------------------------------
+# Tile compositing / atlas building
+# ---------------------------------------------------------------------------
+def get_map_plane(data, width, height, z, x, y):
+    """Mirrors Tilemap._readMapData (rmmz_core.js lines 2618-2636) for our
+    maps, all of which have scrollType=0 (no wrap), so out-of-range reads
+    simply return 0 rather than wrapping."""
+    if x < 0 or x >= width or y < 0 or y >= height:
+        return 0
+    return data[(z * height + y) * width + x]
+
+
+class TileCompositor:
+    """Composites RPGMaker map cells into a deduplicated 48x48 tile atlas.
+
+    Index 0 is always reserved for a fully-transparent blank tile, used by
+    `upper_tiles` for "no upper-layer decoration here" and as a safe
+    fallback if a ground cell ever composites to nothing.
+    """
+
+    def __init__(self, flags, sheets):
+        self.flags = flags
+        self.sheets = sheets
+        blank = Image.new("RGBA", (TILE_SIZE, TILE_SIZE), (0, 0, 0, 0))
+        self.atlas_images = [blank]
+        self._index_by_bytes = {blank.tobytes(): 0}
+
+    def _register(self, image):
+        key = image.tobytes()
+        index = self._index_by_bytes.get(key)
+        if index is None:
+            index = len(self.atlas_images)
+            self.atlas_images.append(image)
+            self._index_by_bytes[key] = index
+        return index
+
+    def composite_cell(self, tile_id0, tile_id1, tile_id2, tile_id3, shadow_bits, upper_tile_id1):
+        """Mirrors Tilemap._addSpot (rmmz_core.js lines 2436-2463), with
+        _isOverpassPosition hardcoded to false (as it always is in the
+        base engine -- see rmmz_core.js line 2646-2648), splitting each of
+        the 4 tile-graphic layers into a "ground" bucket and an "upper"
+        bucket by that tile's own 0x10 flag bit, in RPGMaker's draw order:
+        layer0, layer1, [shadow, table-edge], layer2, layer3."""
+        ground = Image.new("RGBA", (TILE_SIZE, TILE_SIZE), (0, 0, 0, 0))
+        upper = Image.new("RGBA", (TILE_SIZE, TILE_SIZE), (0, 0, 0, 0))
+
+        def add_spot_tile(tile_id):
+            image = render_tile(tile_id, self.sheets, self.flags)
+            if image is None:
+                return
+            target = upper if is_higher_tile(self.flags, tile_id) else ground
+            target.alpha_composite(image)
+
+        add_spot_tile(tile_id0)
+        add_spot_tile(tile_id1)
+        apply_shadow(ground, shadow_bits)
+        if (
+            is_table_tile(self.flags, upper_tile_id1)
+            and not is_table_tile(self.flags, tile_id1)
+            and not is_shadowing_tile(tile_id0)
+        ):
+            edge = render_table_edge_overlay(upper_tile_id1, self.sheets)
+            if edge is not None:
+                ground.alpha_composite(edge)
+        add_spot_tile(tile_id2)
+        add_spot_tile(tile_id3)
+
+        return self._register(ground), self._register(upper)
+
+    def build_atlas_image(self):
+        cols = ATLAS_COLUMNS
+        rows = (len(self.atlas_images) + cols - 1) // cols
+        atlas = Image.new("RGBA", (cols * TILE_SIZE, rows * TILE_SIZE), (0, 0, 0, 0))
+        for index, tile_image in enumerate(self.atlas_images):
+            x = (index % cols) * TILE_SIZE
+            y = (index // cols) * TILE_SIZE
+            atlas.paste(tile_image, (x, y))
+        return atlas
+
+
+def convert_tiles_and_collision(rpg_data, tileset_entry):
+    width = rpg_data['width']
+    height = rpg_data['height']
+    data = rpg_data['data']
+    num_cells = width * height
+
+    if num_cells == 0 or len(data) % num_cells != 0:
+        raise ValueError(
+            f"map data length {len(data)} is not a multiple of "
+            f"{width}x{height}={num_cells}"
+        )
+    num_planes = len(data) // num_cells
+    if num_planes != EXPECTED_DATA_PLANES:
+        raise ValueError(
+            f"expected {EXPECTED_DATA_PLANES} data planes per RPG Maker MZ "
+            f"map cell (4 tile layers + shadow + region), got {num_planes}; "
+            f"the compositor has only been validated for the 6-plane case"
+        )
+
+    flags = tileset_entry['flags']
+    if len(flags) != 8192:
+        raise ValueError(
+            f"expected 8192 tileset flags (tilesets[id]['flags']), got {len(flags)}"
+        )
+
+    sheets = load_tileset_sheets(tileset_entry['tilesetNames'], RPGMAKER_TILESETS_DIR)
+    compositor = TileCompositor(flags, sheets)
+
+    tiles = [0] * num_cells
+    upper_tiles = [0] * num_cells
+    collision = [False] * num_cells
+
+    for y in range(height):
+        for x in range(width):
+            index = y * width + x
+            tile_id0 = get_map_plane(data, width, height, 0, x, y)
+            tile_id1 = get_map_plane(data, width, height, 1, x, y)
+            tile_id2 = get_map_plane(data, width, height, 2, x, y)
+            tile_id3 = get_map_plane(data, width, height, 3, x, y)
+            shadow_bits = get_map_plane(data, width, height, 4, x, y)
+            upper_tile_id1 = get_map_plane(data, width, height, 1, x, y - 1)
+
+            ground_index, upper_index = compositor.composite_cell(
+                tile_id0, tile_id1, tile_id2, tile_id3, shadow_bits, upper_tile_id1
+            )
+            tiles[index] = ground_index
+            upper_tiles[index] = upper_index
+
+            # Flag-based collision: blocked if any of this cell's 4
+            # tile-graphic layers is impassable from all 4 directions.
+            #
+            # This is deliberately OR'd with "cell sits on the map's outer
+            # edge", because we found (empirically, on Town of Endgame's
+            # left/right border) that RPGMaker map borders are sometimes
+            # drawn using *directional* passage flags rather than the
+            # full 0x0F (e.g. tile 6872, the left-column wall, has flags
+            # 0x0e04 -- only its right-facing edge is marked impassable,
+            # which is sufficient in the real engine's per-direction
+            # movement check but invisible to our simpler "fully blocked"
+            # heuristic). Directional passability is explicitly out of
+            # scope, so instead of implementing it we just guarantee the
+            # map's outer ring is always solid, which matches every map
+            # we've inspected and is a strict improvement over silently
+            # letting the player walk into/along border wall graphics.
+            collision[index] = (
+                any(
+                    is_fully_blocked(flags, tile_id)
+                    for tile_id in (tile_id0, tile_id1, tile_id2, tile_id3)
+                )
+                or x == 0 or x == width - 1 or y == 0 or y == height - 1
+            )
+
+    atlas_image = compositor.build_atlas_image()
+    stats = {
+        "atlas_tile_count": len(compositor.atlas_images),
+        "blocked_cells": sum(collision),
+        "upper_cells": sum(1 for v in upper_tiles if v != 0),
+    }
+    return tiles, upper_tiles, collision, atlas_image, stats
+
+
+# ---------------------------------------------------------------------------
+# Orchestration
+# ---------------------------------------------------------------------------
+def load_tilesets_json():
+    with open(RPGMAKER_DATA_DIR / "Tilesets.json", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def convert_map(rpgmaker_map_path, output_path, atlas_output_path, tilesets_json):
+    """Convert a single RPGMaker map to clean format + a composited atlas."""
 
     with open(rpgmaker_map_path, 'r', encoding='utf-8') as f:
         rpg_data = json.load(f)
 
     width = rpg_data['width']
     height = rpg_data['height']
+    tileset_id = rpg_data['tilesetId']
+    tileset_entry = tilesets_json[tileset_id]
+    if tileset_entry is None:
+        raise ValueError(f"tileset id {tileset_id} not present in Tilesets.json")
 
-    # Convert tile data (use layer 0 only for now)
-    layer_size = width * height
-    raw_tiles = rpg_data['data'][:layer_size]
-    tiles = [simplify_tile_id(tile_id) for tile_id in raw_tiles]
+    tiles, upper_tiles, collision, atlas_image, stats = convert_tiles_and_collision(
+        rpg_data, tileset_entry
+    )
 
-    # Extract NPCs from events
-    npcs = []
-    for event in rpg_data['events']:
-        if event is None:
-            continue
+    atlas_output_path.parent.mkdir(parents=True, exist_ok=True)
+    atlas_image.save(atlas_output_path)
 
-        # Skip events without pages or graphics
-        if not event['pages'] or not event['pages'][0]['image']['characterName']:
-            continue
-
-        page = event['pages'][0]
-        image = page['image']
-
-        # Extract dialogue
-        portrait, lines = extract_dialogue_from_commands(page['list'])
-
-        # Skip NPCs without dialogue
-        if not lines:
-            continue
-
-        npc = {
-            "name": event['name'],
-            "x": event['x'],
-            "y": event['y'],
-            "sprite": image['characterName'],
-            "facing": convert_direction(image['direction']),
-            "dialogue": {
-                "speaker": event['name'],  # Use event name as speaker
-                "portrait": portrait,
-                "lines": lines
-            }
-        }
-        npcs.append(npc)
-
-    # Extract portal/door triggers from Transfer Player events
+    npcs = extract_npcs(rpg_data)
     exits = extract_exits_from_events(rpg_data['events'])
-    if extra_exits:
-        exits.extend(extra_exits)
 
-    # Build clean output format
     clean_data = {
         "name": rpg_data['displayName'],
         "width": width,
         "height": height,
         "tiles": tiles,
+        "upper_tiles": upper_tiles,
+        "collision": collision,
         "npcs": npcs,
-        "exits": exits
+        "exits": exits,
     }
 
-    # Write to output
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(clean_data, f, indent=2, ensure_ascii=False)
 
-    print(f"✓ Converted {rpgmaker_map_path.name}")
-    print(f"  → {output_path}")
-    print(f"  Map: {clean_data['name']} ({width}x{height})")
+    print(f"Converted {rpgmaker_map_path.name}")
+    print(f"  -> {output_path}")
+    print(
+        f"  -> {atlas_output_path} "
+        f"({atlas_image.width}x{atlas_image.height}px, "
+        f"{stats['atlas_tile_count']} unique composited tiles)"
+    )
+    print(
+        f"  Map: {clean_data['name']} ({width}x{height}), "
+        f"tileset {tileset_id} ({tileset_entry['name']})"
+    )
+    print(
+        f"  Blocked cells: {stats['blocked_cells']}/{width * height}  "
+        f"Upper-layer cells: {stats['upper_cells']}"
+    )
     print(f"  NPCs: {len(npcs)}")
     for npc in npcs:
         print(f"    - {npc['name']} at ({npc['x']}, {npc['y']}) - {len(npc['dialogue']['lines'])} lines")
@@ -226,63 +446,47 @@ def convert_map(rpgmaker_map_path, output_path, extra_exits=None):
               f"{exit_data['target_spawn_y']})")
     print()
 
-# NOTE: the real game has no simple walk-into-door (code 201) event from
-# Town of Endgame into Team Marathon (mapId 4) anywhere in the RPGMaker data -
-# verified by scanning every Map*.json for a code-201 command targeting
-# mapId 4; there is none. The only door out of Map002 with "Team Marathon" in
-# its labeling is event "To Inn" (a comment reads `<Label: Team Marathon>`),
-# but it actually transfers to mapId 9 ("Team Marathon - Retro"), not mapId 4.
-# The real mechanism for reaching mapId 4 is CommonEvents.json event #12
-# ("Crystal Main"), a menu-driven, multi-destination warp (its Team Marathon
-# branch targets x=12, y=15) - not a simple map door, and out of scope for
-# this phase's code-201 extractor.
-#
-# Phase 1a (the generic Scene/spawn_map/transitions scaffolding) needs one
-# working, bidirectional Town <-> Team Marathon door pair to validate the new
-# transition system end-to-end. Until a proper "team select" menu (mirroring
-# Crystal Main) is designed, this hand-authored placeholder stands in for it:
-# trigger tile chosen clear of existing doors/NPCs/player spawn in Town of
-# Endgame; target spawn coordinates reused from the real Crystal Main data
-# for authenticity. TODO(later phase): replace with a real in-fiction trigger
-# (or an actual team-select menu) once that mechanism is designed.
-TOWN_TO_TEAM_MARATHON_PLACEHOLDER = [{
-    "trigger_x": 30,
-    "trigger_y": 30,
-    "target_scene": "TeamMarathon",
-    "target_spawn_x": 12,
-    "target_spawn_y": 15,
-}]
 
+# NOTE on Team Marathon (mapId 4) vs Team Marathon - Retro (mapId 9): the
+# real game has no simple walk-into-door (code 201) event from Town of
+# Endgame into mapId 4 anywhere in the RPGMaker data - verified by scanning
+# every Map*.json for a code-201 command targeting mapId 4; there is none.
+# The only door out of Map002 themed around "Team Marathon" is event "To
+# Inn", which actually transfers to mapId 9 ("Team Marathon - Retro"), not
+# mapId 4. The real mechanism for reaching mapId 4 is CommonEvents.json
+# event #12 ("Crystal Main"), a menu-driven, multi-destination dev/debug
+# warp - not a simple map door. Per product decision, mapId 9 (Retro) is
+# the canonical, door-connected "Team Marathon" location (it's also the
+# game's actual final content state); mapId 4 is converted too (it's free,
+# and may be useful bonus/optional content later) but nothing links to it
+# from Town, matching the original's shipped topology.
 def main():
-    # Paths. Output is resolved relative to this script's location (not a
-    # hardcoded absolute path) so this converter works correctly regardless
-    # of which git worktree/clone it's run from.
-    rpgmaker_data_dir = Path("/home/atobey/src/endgame-of-sre-rpgmaker-mz/data")
-    output_dir = Path(__file__).resolve().parent.parent / "assets" / "data" / "maps"
+    tilesets_json = load_tilesets_json()
 
-    # Create output directory
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Convert maps
+    # (rpgmaker map file, clean output json, composited atlas png)
     maps_to_convert = [
-        ("Map002.json", "town_of_endgame.json", TOWN_TO_TEAM_MARATHON_PLACEHOLDER),  # Hub
-        ("Map004.json", "team_marathon.json", None),  # Team Marathon interior
+        ("Map002.json", "town_of_endgame.json", "town_tileset.png"),       # Hub (Outside tileset)
+        ("Map004.json", "team_marathon.json", "inside_tileset.png"),      # Team Marathon base (not door-connected; see note above)
+        ("Map009.json", "team_marathon_retro.json", "inside_tileset.png"),  # Team Marathon - Retro (the real, door-connected location)
     ]
 
     print("Converting RPGMaker maps to clean format...\n")
 
-    for rpg_file, clean_file, extra_exits in maps_to_convert:
-        rpg_path = rpgmaker_data_dir / rpg_file
-        out_path = output_dir / clean_file
+    for rpg_file, clean_file, atlas_file in maps_to_convert:
+        rpg_path = RPGMAKER_DATA_DIR / rpg_file
+        out_path = OUTPUT_MAPS_DIR / clean_file
+        atlas_path = OUTPUT_TILESETS_DIR / atlas_file
 
         if not rpg_path.exists():
-            print(f"⚠ Skipping {rpg_file} (not found)")
+            print(f"Skipping {rpg_file} (not found)")
             continue
 
-        convert_map(rpg_path, out_path, extra_exits=extra_exits)
+        convert_map(rpg_path, out_path, atlas_path, tilesets_json)
 
     print("Conversion complete!")
-    print(f"Output files written to: {output_dir}")
+    print(f"Map output: {OUTPUT_MAPS_DIR}")
+    print(f"Atlas output: {OUTPUT_TILESETS_DIR}")
+
 
 if __name__ == "__main__":
     main()

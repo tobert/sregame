@@ -161,46 +161,80 @@ fn spawn_map(
 
     const TILE_SIZE: TilemapTileSize = TilemapTileSize { x: 48.0, y: 48.0 };
     const GRID_SIZE: TilemapGridSize = TilemapGridSize { x: 48.0, y: 48.0 };
+    // Ground and upper layers share one atlas (see tools/convert_maps.py),
+    // so both TilemapBundles below reference the same texture handle.
+    // Upper renders above the player/NPCs (z=1.0, see player.rs/npc.rs).
+    const GROUND_Z: f32 = 0.0;
+    const UPPER_Z: f32 = 2.0;
 
     let map_size = TilemapSize { x: map.width, y: map.height };
-    let tilemap_entity = commands.spawn_empty().id();
-    let mut tile_storage = TileStorage::empty(map_size);
+    let map_transform_xy = (
+        -(map.width as f32 * TILE_SIZE.x) / 2.0,
+        -(map.height as f32 * TILE_SIZE.y) / 2.0,
+    );
+
+    let ground_entity = commands.spawn_empty().id();
+    let mut ground_storage = TileStorage::empty(map_size);
+
+    let upper_entity = commands.spawn_empty().id();
+    let mut upper_storage = TileStorage::empty(map_size);
 
     for y in 0..map.height {
         for x in 0..map.width {
             let tile_pos = TilePos { x, y };
             let index = (y * map.width + x) as usize;
 
-            let texture_index = map.tiles.get(index).copied().unwrap_or(0);
-
-            let tile_entity = commands
+            let ground_index = map.tiles.get(index).copied().unwrap_or(0);
+            let ground_tile = commands
                 .spawn((
                     TileBundle {
                         position: tile_pos,
-                        tilemap_id: TilemapId(tilemap_entity),
-                        texture_index: TileTextureIndex(texture_index),
+                        tilemap_id: TilemapId(ground_entity),
+                        texture_index: TileTextureIndex(ground_index),
                         ..default()
                     },
                     Map,
                 ))
                 .id();
+            ground_storage.set(&tile_pos, ground_tile);
 
-            tile_storage.set(&tile_pos, tile_entity);
+            let upper_index = map.upper_tiles.get(index).copied().unwrap_or(0);
+            let upper_tile = commands
+                .spawn((
+                    TileBundle {
+                        position: tile_pos,
+                        tilemap_id: TilemapId(upper_entity),
+                        texture_index: TileTextureIndex(upper_index),
+                        ..default()
+                    },
+                    Map,
+                ))
+                .id();
+            upper_storage.set(&tile_pos, upper_tile);
         }
     }
 
-    commands.entity(tilemap_entity).insert((
+    commands.entity(ground_entity).insert((
         TilemapBundle {
             grid_size: GRID_SIZE,
             size: map_size,
-            storage: tile_storage,
+            storage: ground_storage,
+            texture: TilemapTexture::Single(texture_handle.clone()),
+            tile_size: TILE_SIZE,
+            transform: Transform::from_xyz(map_transform_xy.0, map_transform_xy.1, GROUND_Z),
+            ..default()
+        },
+        Map,
+    ));
+
+    commands.entity(upper_entity).insert((
+        TilemapBundle {
+            grid_size: GRID_SIZE,
+            size: map_size,
+            storage: upper_storage,
             texture: TilemapTexture::Single(texture_handle),
             tile_size: TILE_SIZE,
-            transform: Transform::from_xyz(
-                -(map.width as f32 * TILE_SIZE.x) / 2.0,
-                -(map.height as f32 * TILE_SIZE.y) / 2.0,
-                0.0,
-            ),
+            transform: Transform::from_xyz(map_transform_xy.0, map_transform_xy.1, UPPER_Z),
             ..default()
         },
         Map,
@@ -209,7 +243,8 @@ fn spawn_map(
     let mut collision_map = CollisionMap::new(map.width, map.height);
     for y in 0..map.height {
         for x in 0..map.width {
-            if x == 0 || y == 0 || x == map.width - 1 || y == map.height - 1 {
+            let index = (y * map.width + x) as usize;
+            if map.collision.get(index).copied().unwrap_or(true) {
                 collision_map.set_tile(x, y, TileCollision::Blocked);
             }
         }

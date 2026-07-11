@@ -8,7 +8,18 @@ pub struct MapData {
     pub name: String,
     pub width: u32,
     pub height: u32,
+    /// Ground-layer atlas indices, one per cell (row-major). Index 0 is a
+    /// reserved fully-transparent tile.
     pub tiles: Vec<u32>,
+    /// Upper-layer (drawn above the player/NPCs) atlas indices into the
+    /// *same* atlas as `tiles`, same shape as `tiles`. 0 means "no
+    /// upper-layer decoration on this cell". Produced by
+    /// tools/convert_maps.py from RPGMaker's per-tile 0x10 "higher" flag.
+    pub upper_tiles: Vec<u32>,
+    /// Per-cell fully-blocked flag (row-major, same shape as `tiles`),
+    /// baked from RPGMaker tileset passability flags by
+    /// tools/convert_maps.py. See CollisionMap in tilemap.rs.
+    pub collision: Vec<bool>,
     pub npcs: Vec<NpcData>,
     #[serde(default)]
     pub exits: Vec<ExitData>,
