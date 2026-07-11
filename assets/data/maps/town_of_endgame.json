@@ -4017,13 +4017,13 @@
       }
     },
     {
-      "name": "Tenchi",
+      "name": "Tenchi Reader",
       "x": 4,
       "y": 2,
       "sprite": "People1",
       "facing": "down",
       "dialogue": {
-        "speaker": "Tenchi",
+        "speaker": "Tenchi Reader",
         "portrait": "People1",
         "lines": [
           "We all love our work but we're having trouble with our velocity.",
@@ -4063,13 +4063,13 @@
       }
     },
     {
-      "name": "Nanny Ogg Vorbis",
+      "name": "Amy",
       "x": 18,
       "y": 32,
       "sprite": "People1",
       "facing": "right",
       "dialogue": {
-        "speaker": "Nanny Ogg Vorbis",
+        "speaker": "Amy",
         "portrait": "Amy",
         "lines": [
           "nothin' over 'ere cept broken dreams and burnouts It's not that bad, I just haven't done anything with this part of the village yet :)"
@@ -4113,13 +4113,13 @@
       }
     },
     {
-      "name": "Alls Johnpaw",
+      "name": "Paws Alljohn",
       "x": 14,
       "y": 18,
       "sprite": "Evil",
       "facing": "down",
       "dialogue": {
-        "speaker": "Alls Johnpaw",
+        "speaker": "Paws Alljohn",
         "portrait": "Evil",
         "lines": [
           "GAME OVER MAN!",

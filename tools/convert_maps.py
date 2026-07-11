@@ -89,21 +89,37 @@ def clean_dialogue_text(text):
 
 
 def extract_dialogue_from_commands(commands):
-    """Extract speaker, portrait, and dialogue lines from event commands"""
+    """Extract speaker, portrait, and dialogue lines from event commands.
+
+    The speaker's display name comes from the Show Text command's own 5th
+    parameter (RPGMaker MZ code 101's "speaker name" field), NOT the
+    event's internal editor name - those two routinely differ (e.g. the
+    event literally named "New Guy" in Map006/Team Inferno displays as
+    "Kirito" in every one of its Show Text boxes; "Doctor Mcfire" displays
+    as "Doctor McFire"; "Alls Johnpaw" displays as "Paws Alljohn" or
+    "Dave" depending on the map). Verified by scanning every Map*.json:
+    whenever an event has any dialogue lines at all, it has a preceding
+    code-101 command with a 5-element parameter list, so this is always
+    available in practice - but we still fall back to the event's own
+    name defensively rather than crash on a shape we haven't seen.
+    """
     portrait = ""
+    speaker = ""
     raw_lines = []
 
     for cmd in commands:
-        # Code 101 = Show Face (portrait)
+        # Code 101 = Show Text window setup (face image + speaker name)
         if cmd['code'] == 101 and cmd['parameters']:
             portrait = cmd['parameters'][0]  # Face image name
+            if len(cmd['parameters']) > 4 and cmd['parameters'][4]:
+                speaker = cmd['parameters'][4]
 
         # Code 401 = Show Text (dialogue line)
         elif cmd['code'] == 401 and cmd['parameters']:
             raw_lines.append(cmd['parameters'][0])
 
     if not raw_lines:
-        return portrait, []
+        return portrait, speaker, []
 
     lines = []
     current_paragraph = []
@@ -126,7 +142,7 @@ def extract_dialogue_from_commands(commands):
     if current_paragraph:
         lines.append(' '.join(current_paragraph))
 
-    return portrait, lines
+    return portrait, speaker, lines
 
 
 def extract_npcs(rpg_data):
@@ -141,19 +157,21 @@ def extract_npcs(rpg_data):
         page = event['pages'][0]
         image = page['image']
 
-        portrait, lines = extract_dialogue_from_commands(page['list'])
+        portrait, speaker, lines = extract_dialogue_from_commands(page['list'])
 
         if not lines:
             continue
 
+        display_name = speaker or event['name']
+
         npcs.append({
-            "name": event['name'],
+            "name": display_name,
             "x": event['x'],
             "y": event['y'],
             "sprite": image['characterName'],
             "facing": convert_direction(image['direction']),
             "dialogue": {
-                "speaker": event['name'],
+                "speaker": display_name,
                 "portrait": portrait,
                 "lines": lines
             }

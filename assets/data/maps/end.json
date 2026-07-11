@@ -673,13 +673,13 @@
   ],
   "npcs": [
     {
-      "name": "Dave",
+      "name": "Amy",
       "x": 5,
       "y": 6,
       "sprite": "Evil",
       "facing": "down",
       "dialogue": {
-        "speaker": "Dave",
+        "speaker": "Amy",
         "portrait": "Amy",
         "lines": [
           "GAME OVER MAN!",
@@ -690,13 +690,13 @@
       }
     },
     {
-      "name": "EV003",
+      "name": "Amy Tobey",
       "x": 8,
       "y": 4,
       "sprite": "Nature",
       "facing": "down",
       "dialogue": {
-        "speaker": "EV003",
+        "speaker": "Amy Tobey",
         "portrait": "Amy",
         "lines": [
           "The Endgame of SRE Amy Tobey | @renice@hachyderm.io Assets by VisuStella"
@@ -1109,13 +1109,13 @@
       }
     },
     {
-      "name": "Hidaslo Xena",
+      "name": "Hidaslo Xela",
       "x": 7,
       "y": 9,
       "sprite": "People3",
       "facing": "down",
       "dialogue": {
-        "speaker": "Hidaslo Xena",
+        "speaker": "Hidaslo Xela",
         "portrait": "People3",
         "lines": [
           "I know I'm not supposed to gloat but the error budget alert was the first to fire and we were on it before customers noticed."
@@ -1169,13 +1169,13 @@
       }
     },
     {
-      "name": "Doctor Mcfire",
+      "name": "Doctor McFire",
       "x": 5,
       "y": 9,
       "sprite": "DrMcfire",
       "facing": "down",
       "dialogue": {
-        "speaker": "Doctor Mcfire",
+        "speaker": "Doctor McFire",
         "portrait": "DrMcfire",
         "lines": [
           "Coordinating tricky incidents is like slaying as a lead guitar on stage.",
