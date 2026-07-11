@@ -328,6 +328,7 @@ def render_autotile(tile_id: int, sheets: dict[int, Image.Image], flags: list[in
 
 
 _warned_missing_sheets: set[int] = set()
+_warned_blank_tiles: set[int] = set()
 
 
 def render_tile(tile_id: int, sheets: dict[int, Image.Image], flags: list[int]) -> Image.Image | None:
@@ -339,13 +340,36 @@ def render_tile(tile_id: int, sheets: dict[int, Image.Image], flags: list[int]) 
         return None
     try:
         if is_autotile(tile_id):
-            return render_autotile(tile_id, sheets, flags)
-        return render_normal_tile(tile_id, sheets)
+            image = render_autotile(tile_id, sheets, flags)
+        else:
+            image = render_normal_tile(tile_id, sheets)
     except MissingTilesetSheetError as error:
         if tile_id not in _warned_missing_sheets:
             _warned_missing_sheets.add(tile_id)
             print(f"WARNING: {error} -- rendering as invisible")
         return None
+
+    # A visible tile ID whose source rect(s) land entirely within a real,
+    # present sheet but decode to 100% transparent pixels is a different
+    # failure mode than MissingTilesetSheetError: the sheet exists and the
+    # coordinate math is in-bounds, but there is simply no authored artwork
+    # at that exact position (e.g. the map was painted against a richer
+    # tileset before an asset swap left gaps in the replacement sheet -- see
+    # e.g. Inside_A5_VS.png row 6, which is blank except column 6). Silently
+    # compositing nothing here is indistinguishable from a genuine "blank
+    # decoration" tile, which is exactly the kind of silent fallback that
+    # hides real bugs, so it's surfaced with the same loud-once treatment as
+    # a missing sheet rather than passed through quietly. Nothing about the
+    # rendered pixels changes -- there's no valid source art to substitute --
+    # this only makes the gap visible in build output instead of invisible.
+    if tile_id not in _warned_blank_tiles and image.getextrema()[3][1] == 0:
+        _warned_blank_tiles.add(tile_id)
+        print(
+            f"WARNING: tile {tile_id} decoded in-bounds but is 100% "
+            f"transparent (sheet has no art at that position) -- "
+            f"rendering as invisible"
+        )
+    return image
 
 
 # ---------------------------------------------------------------------------
