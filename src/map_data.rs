@@ -216,6 +216,51 @@ mod tests {
     }
 
     #[test]
+    fn every_shipped_map_npc_sprite_and_portrait_file_exists() {
+        // GameAssets loads sprites/portraits by scanning
+        // assets/textures/{characters,portraits}/*.png at startup (see
+        // assets.rs) - there's no compile-time check that a map's NPC data
+        // references a file that's actually on disk. A missing sprite is a
+        // silent "warn + skip" in tilemap.rs (the NPC just never appears),
+        // and a missing portrait falls back to no portrait in the dialogue
+        // box - both easy to miss when adding a new map's content by hand.
+        // This test catches that at `cargo test` time instead of by
+        // noticing an NPC silently didn't spawn during a playtest.
+        let maps_dir = std::path::Path::new("assets/data/maps");
+        let characters_dir = std::path::Path::new("assets/textures/characters");
+        let portraits_dir = std::path::Path::new("assets/textures/portraits");
+
+        let mut missing = Vec::new();
+
+        for entry in fs::read_dir(maps_dir).expect("assets/data/maps should exist") {
+            let path = entry.expect("readable dir entry").path();
+            if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                continue;
+            }
+            let map_name = path.file_stem().unwrap().to_string_lossy().to_string();
+            let map = MapData::load(&map_name).expect("shipped map JSON should parse");
+
+            for npc in &map.npcs {
+                if !characters_dir.join(format!("{}.png", npc.sprite)).exists() {
+                    missing.push(format!(
+                        "{map_name}: NPC '{}' sprite '{}' -> assets/textures/characters/{}.png",
+                        npc.name, npc.sprite, npc.sprite
+                    ));
+                }
+                let portrait = &npc.dialogue.portrait;
+                if !portrait.is_empty() && !portraits_dir.join(format!("{portrait}.png")).exists() {
+                    missing.push(format!(
+                        "{map_name}: NPC '{}' portrait '{}' -> assets/textures/portraits/{}.png",
+                        npc.name, portrait, portrait
+                    ));
+                }
+            }
+        }
+
+        assert!(missing.is_empty(), "missing NPC art assets:\n{}", missing.join("\n"));
+    }
+
+    #[test]
     fn map_data_exits_defaults_to_empty_when_absent() {
         // Older/hand-written map JSON without an "exits" key must still
         // parse (backward compatible), just with no portals.
