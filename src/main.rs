@@ -21,7 +21,7 @@ mod telemetry;
 mod instrumentation;
 mod transitions;
 
-use game_state::{GameState, GameStatePlugin, Scene};
+use game_state::{GameState, GameStatePlugin, Mode, Scene};
 use assets::AssetsPlugin;
 use player::PlayerPlugin;
 use camera::{CameraPlugin, MainCamera, CameraFollow};
@@ -188,7 +188,7 @@ fn main() {
         ))
         .add_systems(Startup, setup)
         .add_systems(OnEnter(GameState::Playing), on_enter_playing)
-        .add_systems(OnEnter(GameState::Dialogue), on_enter_dialogue)
+        .add_systems(OnEnter(Mode::Dialogue), on_enter_dialogue)
         .add_systems(Update, exit_after_n_frames_or_seconds)
         .run();
 

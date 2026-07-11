@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::game_state::GameState;
+use crate::game_state::Mode;
 use crate::assets::GameAssets;
 use crate::instrumentation::{GameTracer, GameMeter, ActiveDialogue, record_dialogue_line_event};
 use opentelemetry::{KeyValue, Context as OtelContext, trace::{Tracer, Span as _}};
@@ -10,13 +10,13 @@ pub struct DialoguePlugin;
 impl Plugin for DialoguePlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<StartDialogueEvent>()
-            .add_systems(Update, handle_dialogue_events.run_if(in_state(GameState::Playing)))
-            .add_systems(OnEnter(GameState::Dialogue), spawn_dialogue_ui)
+            .add_systems(Update, handle_dialogue_events.run_if(in_state(Mode::Exploring)))
+            .add_systems(OnEnter(Mode::Dialogue), spawn_dialogue_ui)
             .add_systems(Update, (
                 type_dialogue_text,
                 advance_dialogue,
-            ).run_if(in_state(GameState::Dialogue)))
-            .add_systems(OnExit(GameState::Dialogue), despawn_dialogue_ui);
+            ).run_if(in_state(Mode::Dialogue)))
+            .add_systems(OnExit(Mode::Dialogue), despawn_dialogue_ui);
     }
 }
 
@@ -190,7 +190,7 @@ fn spawn_dialogue_ui(
 fn handle_dialogue_events(
     mut commands: Commands,
     mut events: MessageReader<StartDialogueEvent>,
-    mut next_state: ResMut<NextState<GameState>>,
+    mut next_mode: ResMut<NextState<Mode>>,
     tracer: Option<Res<GameTracer>>,
 ) {
     for event in events.read() {
@@ -235,8 +235,8 @@ fn handle_dialogue_events(
         );
 
         commands.insert_resource(queue);
-        info!("🎮 Transitioning to Dialogue state");
-        next_state.set(GameState::Dialogue);
+        info!("🎮 Transitioning to Dialogue mode");
+        next_mode.set(Mode::Dialogue);
     }
 }
 
@@ -293,7 +293,7 @@ fn type_dialogue_text(
 
 fn advance_dialogue(
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut next_state: ResMut<NextState<GameState>>,
+    mut next_mode: ResMut<NextState<Mode>>,
     mut dialogue_queue: Option<ResMut<DialogueQueue>>,
     mut typewriter_query: Query<(&mut Text, &mut TypewriterEffect), With<DialogueTextNode>>,
 ) {
@@ -319,10 +319,10 @@ fn advance_dialogue(
             }
         } else {
             info!("Dialogue sequence complete");
-            next_state.set(GameState::Playing);
+            next_mode.set(Mode::Exploring);
         }
     } else {
-        next_state.set(GameState::Playing);
+        next_mode.set(Mode::Exploring);
     }
 }
 

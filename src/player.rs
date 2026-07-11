@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::game_state::GameState;
+use crate::game_state::{GameState, Mode};
 use crate::tilemap::CollisionMap;
 use crate::assets::GameAssets;
 use crate::instrumentation::{GameTracer, PlayerSessionTrace};
@@ -14,7 +14,7 @@ impl Plugin for PlayerPlugin {
                 player_movement_input,
                 apply_movement,
                 animate_player,
-            ).chain().run_if(in_state(GameState::Playing)));
+            ).chain().run_if(in_state(Mode::Exploring)));
     }
 }
 

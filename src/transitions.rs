@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::game_state::{GameState, Scene};
+use crate::game_state::{Mode, Scene};
 use crate::map_data::{scene_from_str, world_to_tile};
 use crate::player::Player;
 use crate::tilemap::{CollisionMap, MapExits, PendingArrival};
@@ -10,7 +10,10 @@ pub struct TransitionsPlugin;
 
 impl Plugin for TransitionsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, check_map_exits.run_if(in_state(GameState::Playing)));
+        // Gated on Mode::Exploring (rather than GameState::Playing) so a
+        // portal can't fire while a dialogue box is showing - Mode only
+        // exists at all while GameState::Playing, so this also implies that.
+        app.add_systems(Update, check_map_exits.run_if(in_state(Mode::Exploring)));
     }
 }
 

@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::game_state::GameState;
+use crate::game_state::Mode;
 use crate::player::Player;
 use crate::dialogue::StartDialogueEvent;
 use crate::assets::GameAssets;
@@ -17,7 +17,7 @@ impl Plugin for NpcPlugin {
             .add_systems(Update, (
             check_npc_proximity,
             handle_interaction_input,
-        ).chain().run_if(in_state(GameState::Playing)));
+        ).chain().run_if(in_state(Mode::Exploring)));
     }
 }
 
