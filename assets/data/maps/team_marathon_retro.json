@@ -1532,8 +1532,7 @@
         "portrait": "Monster",
         "lines": [
           "I committed a buffer overflow fix right before Evie rang the bell. I still have the cognitive zoomies so I'm going to write some Rust!",
-          "It's a full moon, the sky is clear, and I love coding.",
-          "Awooooooo!"
+          "It's a full moon, the sky is clear, and I love coding. Awooooooo!"
         ]
       }
     },
@@ -1603,7 +1602,7 @@
       }
     },
     {
-      "name": "Doctor McFire",
+      "name": "Doctor Mcfire",
       "x": 10,
       "y": 8,
       "sprite": "DrMcfire",
@@ -1614,8 +1613,7 @@
         "lines": [
           "On-call is such a rush. One minute you're typing away and the next you're the incident commander.",
           "When I went from the SLO alert to traces I immediately knew I screwed up. Rolling forward was just as easy as rollback so I cut a pull request.",
-          "Some people complain but I love incidents.",
-          "I should write a paper about them, that would be cool."
+          "Some people complain but I love incidents. I should write a paper about them, that would be cool."
         ]
       }
     },
@@ -1702,7 +1700,8 @@
         "speaker": "Polly Math",
         "portrait": "People1",
         "lines": [
-          "I need to fix this bug then check in the code I started this morning but then BAM! an incident and tests to fix and patch my kernels Managear says my promotion isn't looking good because I don't close enough tickets. Everything would fall to pieces without me!",
+          "I need to fix this bug then check in the code I started this morning but then BAM! an incident and tests to fix and patch my kernels",
+          "Managear says my promotion isn't looking good because I don't close enough tickets. Everything would fall to pieces without me!",
           "Why would you bring up ADHD?"
         ]
       }
@@ -1722,14 +1721,14 @@
       }
     },
     {
-      "name": "Amy",
+      "name": "Alls Johnpaw",
       "x": 20,
       "y": 11,
       "sprite": "Evil",
       "facing": "left",
       "dialogue": {
-        "speaker": "Amy",
-        "portrait": "Amy",
+        "speaker": "Dave",
+        "portrait": "Evil",
         "lines": [
           "GAME OVER MAN!",
           "Haha not really. $#@@*** this though. I gave them the best Kubers and somehow they always have excuses for their outages.",

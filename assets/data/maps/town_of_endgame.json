@@ -4017,7 +4017,7 @@
       }
     },
     {
-      "name": "Tenchi Reader",
+      "name": "Tenchi",
       "x": 4,
       "y": 2,
       "sprite": "People1",
@@ -4043,8 +4043,7 @@
         "portrait": "Monster",
         "lines": [
           "Fixing the database schema was intense. Just thinking about it gives me cognitive zoomies!",
-          "It's a full moon, the sky is clear, and I love coding.",
-          "We're writing Rust tonight boys. Awooooooo!"
+          "It's a full moon, the sky is clear, and I love coding. We're writing Rust tonight boys. Awooooooo!"
         ]
       }
     },
@@ -4063,16 +4062,17 @@
       }
     },
     {
-      "name": "Amy",
+      "name": "Nanny Ogg Vorbis",
       "x": 18,
       "y": 32,
       "sprite": "People1",
       "facing": "right",
       "dialogue": {
-        "speaker": "Amy",
-        "portrait": "Amy",
+        "speaker": "Nanny Ogg Vorbis",
+        "portrait": "People1",
         "lines": [
-          "nothin' over 'ere cept broken dreams and burnouts It's not that bad, I just haven't done anything with this part of the village yet :)"
+          "nothin' over 'ere cept broken dreams and burnouts",
+          "It's not that bad, I just haven't done anything with this part of the village yet :)"
         ]
       }
     },
@@ -4113,7 +4113,7 @@
       }
     },
     {
-      "name": "Paws Alljohn",
+      "name": "Alls Johnpaw",
       "x": 14,
       "y": 18,
       "sprite": "Evil",
@@ -4154,8 +4154,7 @@
         "portrait": "People4",
         "lines": [
           "The great style unification of 2021 is the greatest achievement of our career!",
-          "Customers still complain about usability. It's like.",
-          "Our stuff is great, but it doesn't quite come to gether."
+          "Customers still complain about usability. It's like. Our stuff is great, but it doesn't quite come to gether."
         ]
       }
     }
