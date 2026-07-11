@@ -1,27 +1,15 @@
 use bevy::prelude::*;
-use bevy::asset::AssetLoader;
 use crate::game_state::GameState;
 use crate::assets::GameAssets;
 use crate::instrumentation::{GameTracer, GameMeter, ActiveDialogue, record_dialogue_line_event};
 use opentelemetry::{KeyValue, Context as OtelContext, trace::{Tracer, Span as _}};
-use serde::Deserialize;
 use std::time::Instant;
-
-#[derive(Deserialize, Asset, TypePath)]
-#[allow(dead_code)]
-pub struct DialogueData {
-    pub speaker: String,
-    pub portrait: Option<String>,
-    pub lines: Vec<String>,
-}
 
 pub struct DialoguePlugin;
 
 impl Plugin for DialoguePlugin {
     fn build(&self, app: &mut App) {
-        app.init_asset::<DialogueData>()
-            .init_asset_loader::<DialogueDataLoader>()
-            .add_message::<StartDialogueEvent>()
+        app.add_message::<StartDialogueEvent>()
             .add_systems(Update, handle_dialogue_events.run_if(in_state(GameState::Playing)))
             .add_systems(OnEnter(GameState::Dialogue), spawn_dialogue_ui)
             .add_systems(Update, (
@@ -394,41 +382,4 @@ fn despawn_dialogue_ui(
 
     commands.remove_resource::<DialogueQueue>();
     info!("Dialogue UI despawned");
-}
-
-#[derive(Default)]
-struct DialogueDataLoader;
-
-impl AssetLoader for DialogueDataLoader {
-    type Asset = DialogueData;
-    type Settings = ();
-    type Error = std::io::Error;
-
-    async fn load(
-        &self,
-        reader: &mut dyn bevy::asset::io::Reader,
-        _settings: &Self::Settings,
-        load_context: &mut bevy::asset::LoadContext<'_>,
-    ) -> Result<Self::Asset, Self::Error> {
-        let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes).await?;
-
-        // Enhanced error context with file size and path info
-        let dialogue_data: DialogueData = serde_json::from_slice(&bytes)
-            .map_err(|e| {
-                let error_msg = format!(
-                    "Failed to parse dialogue JSON (file: {}, size: {} bytes): {}",
-                    load_context.path().display(),
-                    bytes.len(),
-                    e
-                );
-                error!("{}", error_msg);
-                std::io::Error::new(std::io::ErrorKind::InvalidData, error_msg)
-            })?;
-        Ok(dialogue_data)
-    }
-
-    fn extensions(&self) -> &[&str] {
-        &["dialogue.json"]
-    }
 }
