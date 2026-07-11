@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 use crate::game_state::GameState;
+use std::collections::HashMap;
+use std::fs;
 
 pub struct AssetsPlugin;
 
@@ -15,47 +17,20 @@ impl Plugin for AssetsPlugin {
     }
 }
 
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct GameAssets {
     pub player_sprite: Handle<Image>,
-    pub npc_nature: Handle<Image>,
-    pub npc_mando: Handle<Image>,
-    pub npc_sf_actor1: Handle<Image>,
-    pub npc_people1: Handle<Image>,
-    pub npc_monster: Handle<Image>,
-    pub npc_casey: Handle<Image>,
-    pub npc_actor1: Handle<Image>,
-    pub npc_actor2: Handle<Image>,
-    pub npc_evil: Handle<Image>,
-    pub npc_sf_monster: Handle<Image>,
-    pub npc_people4: Handle<Image>,
-    pub town_tileset: Handle<Image>,
+    /// Character sprite sheets, keyed by filename stem (e.g. "Nature" for
+    /// `textures/characters/Nature.png`). Populated by scanning the directory
+    /// on disk so new characters need no Rust changes.
+    pub npc_sprites: HashMap<String, Handle<Image>>,
+    /// Tileset textures, keyed by filename stem (e.g. "town_tileset" for
+    /// `textures/tilesets/town_tileset.png`). Scenes look these up by the
+    /// `tileset_key` in their `SceneConfig` (see `tilemap.rs`).
+    pub tilesets: HashMap<String, Handle<Image>>,
     pub portrait_nature: Handle<Image>,
     pub dialogue_font: Handle<Font>,
     pub loaded: bool,
-}
-
-impl Default for GameAssets {
-    fn default() -> Self {
-        Self {
-            player_sprite: Handle::default(),
-            npc_nature: Handle::default(),
-            npc_mando: Handle::default(),
-            npc_sf_actor1: Handle::default(),
-            npc_people1: Handle::default(),
-            npc_monster: Handle::default(),
-            npc_casey: Handle::default(),
-            npc_actor1: Handle::default(),
-            npc_actor2: Handle::default(),
-            npc_evil: Handle::default(),
-            npc_sf_monster: Handle::default(),
-            npc_people4: Handle::default(),
-            town_tileset: Handle::default(),
-            portrait_nature: Handle::default(),
-            dialogue_font: Handle::default(),
-            loaded: false,
-        }
-    }
 }
 
 #[derive(Component)]
@@ -100,6 +75,43 @@ fn spawn_loading_screen(mut commands: Commands, asset_server: Res<AssetServer>) 
     });
 }
 
+/// Scan a directory on disk for `.png` files and load each one through the
+/// asset server, keyed by filename stem. Mirrors the direct-filesystem idiom
+/// `map_data.rs` uses for reading map JSON, rather than requiring every asset
+/// to be registered by hand.
+fn scan_and_load_pngs(
+    disk_dir: &str,
+    asset_dir: &str,
+    asset_server: &AssetServer,
+) -> HashMap<String, Handle<Image>> {
+    let mut handles = HashMap::new();
+
+    let entries = match fs::read_dir(disk_dir) {
+        Ok(entries) => entries,
+        Err(e) => {
+            error!("Failed to read asset directory {}: {}", disk_dir, e);
+            return handles;
+        }
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+
+        if path.extension().and_then(|ext| ext.to_str()) != Some("png") {
+            continue;
+        }
+
+        let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+            continue;
+        };
+
+        let asset_path = format!("{asset_dir}/{stem}.png");
+        handles.insert(stem.to_string(), asset_server.load(asset_path));
+    }
+
+    handles
+}
+
 fn start_asset_loading(
     mut game_assets: ResMut<GameAssets>,
     asset_server: Res<AssetServer>,
@@ -107,18 +119,24 @@ fn start_asset_loading(
     info!("Starting asset loading...");
 
     game_assets.player_sprite = asset_server.load("textures/characters/Amy-Walking.png");
-    game_assets.npc_nature = asset_server.load("textures/characters/Nature.png");
-    game_assets.npc_mando = asset_server.load("textures/characters/Mando.png");
-    game_assets.npc_sf_actor1 = asset_server.load("textures/characters/SF_Actor1.png");
-    game_assets.npc_people1 = asset_server.load("textures/characters/People1.png");
-    game_assets.npc_monster = asset_server.load("textures/characters/Monster.png");
-    game_assets.npc_casey = asset_server.load("textures/characters/casey.png");
-    game_assets.npc_actor1 = asset_server.load("textures/characters/Actor1.png");
-    game_assets.npc_actor2 = asset_server.load("textures/characters/Actor2.png");
-    game_assets.npc_evil = asset_server.load("textures/characters/Evil.png");
-    game_assets.npc_sf_monster = asset_server.load("textures/characters/SF_Monster.png");
-    game_assets.npc_people4 = asset_server.load("textures/characters/People4.png");
-    game_assets.town_tileset = asset_server.load("textures/tilesets/town_tileset.png");
+
+    game_assets.npc_sprites = scan_and_load_pngs(
+        "assets/textures/characters",
+        "textures/characters",
+        &asset_server,
+    );
+    game_assets.tilesets = scan_and_load_pngs(
+        "assets/textures/tilesets",
+        "textures/tilesets",
+        &asset_server,
+    );
+
+    info!(
+        "Discovered {} character sprites, {} tilesets",
+        game_assets.npc_sprites.len(),
+        game_assets.tilesets.len()
+    );
+
     game_assets.portrait_nature = asset_server.load("textures/portraits/Nature.png");
     game_assets.dialogue_font = asset_server.load("fonts/dialogue.ttf");
 
@@ -135,20 +153,16 @@ fn check_asset_loading(
     }
 
     let all_loaded = asset_server.is_loaded_with_dependencies(&game_assets.player_sprite)
-        && asset_server.is_loaded_with_dependencies(&game_assets.npc_nature)
-        && asset_server.is_loaded_with_dependencies(&game_assets.npc_mando)
-        && asset_server.is_loaded_with_dependencies(&game_assets.npc_sf_actor1)
-        && asset_server.is_loaded_with_dependencies(&game_assets.npc_people1)
-        && asset_server.is_loaded_with_dependencies(&game_assets.npc_monster)
-        && asset_server.is_loaded_with_dependencies(&game_assets.npc_casey)
-        && asset_server.is_loaded_with_dependencies(&game_assets.npc_actor1)
-        && asset_server.is_loaded_with_dependencies(&game_assets.npc_actor2)
-        && asset_server.is_loaded_with_dependencies(&game_assets.npc_evil)
-        && asset_server.is_loaded_with_dependencies(&game_assets.npc_sf_monster)
-        && asset_server.is_loaded_with_dependencies(&game_assets.npc_people4)
-        && asset_server.is_loaded_with_dependencies(&game_assets.town_tileset)
         && asset_server.is_loaded_with_dependencies(&game_assets.portrait_nature)
-        && asset_server.is_loaded_with_dependencies(&game_assets.dialogue_font);
+        && asset_server.is_loaded_with_dependencies(&game_assets.dialogue_font)
+        && game_assets
+            .npc_sprites
+            .values()
+            .all(|handle| asset_server.is_loaded_with_dependencies(handle))
+        && game_assets
+            .tilesets
+            .values()
+            .all(|handle| asset_server.is_loaded_with_dependencies(handle));
 
     if all_loaded {
         game_assets.loaded = true;

@@ -19,6 +19,7 @@ mod map_data;
 mod viewport;
 mod telemetry;
 mod instrumentation;
+mod transitions;
 
 use game_state::{GameState, GameStatePlugin, Scene};
 use assets::AssetsPlugin;
@@ -28,6 +29,7 @@ use tilemap::TilemapPlugin;
 use dialogue::DialoguePlugin;
 use npc::NpcPlugin;
 use viewport::SemanticViewportPlugin;
+use transitions::TransitionsPlugin;
 
 /// The Endgame of SRE - An educational game about Site Reliability Engineering
 #[derive(Parser, Debug, Clone, Resource)]
@@ -182,6 +184,7 @@ fn main() {
             DialoguePlugin,
             NpcPlugin,
             SemanticViewportPlugin,
+            TransitionsPlugin,
         ))
         .add_systems(Startup, setup)
         .add_systems(OnEnter(GameState::Playing), on_enter_playing)

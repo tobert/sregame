@@ -80,7 +80,73 @@ def simplify_tile_id(tile_id):
     else:
         return 0
 
-def convert_map(rpgmaker_map_path, output_path):
+# RPGMaker MZ map ID -> our Scene enum variant name (see MapInfos.json).
+# Map001 (debug) and Map008 (The War Room) are intentionally omitted: both
+# are empty/unused in the original game and have no corresponding Scene.
+MAP_ID_TO_SCENE = {
+    2: "TownOfEndgame",
+    3: "End",
+    4: "TeamMarathon",
+    5: "TeamDisco",
+    6: "TeamInferno",
+    7: "MahoganyRow",
+    9: "TeamMarathonRetro",
+    10: "Intro",
+}
+
+def extract_exits_from_events(events):
+    """Extract Transfer Player (code 201) events as map exits.
+
+    RPGMaker MZ code-201 "Transfer Player" parameters are, in order:
+      [designation, mapId, x, y, direction, fadeType]
+    where designation 0 = direct map/x/y (the only form used anywhere in
+    this game's data - verified by scanning every Map*.json), 1 = designation
+    via variables (unsupported here; we skip and warn rather than guess).
+
+    The exit's trigger position is the *source* event's own x/y in the map
+    it's defined in (i.e. the door tile itself), not a command parameter.
+    """
+    exits = []
+
+    for event in events:
+        if event is None:
+            continue
+
+        for page in event['pages']:
+            for cmd in page['list']:
+                if cmd['code'] != 201:
+                    continue
+
+                params = cmd['parameters']
+                if len(params) != 6:
+                    raise ValueError(
+                        f"Unexpected Transfer Player parameter count in event "
+                        f"'{event['name']}': {params}"
+                    )
+                designation, map_id, target_x, target_y, _direction, _fade_type = params
+
+                if designation != 0:
+                    print(f"  ⚠ Skipping variable-designated transfer in event "
+                          f"'{event['name']}' (unsupported)")
+                    continue
+
+                target_scene = MAP_ID_TO_SCENE.get(map_id)
+                if target_scene is None:
+                    print(f"  ⚠ Skipping transfer to unmapped mapId {map_id} "
+                          f"in event '{event['name']}'")
+                    continue
+
+                exits.append({
+                    "trigger_x": event['x'],
+                    "trigger_y": event['y'],
+                    "target_scene": target_scene,
+                    "target_spawn_x": target_x,
+                    "target_spawn_y": target_y,
+                })
+
+    return exits
+
+def convert_map(rpgmaker_map_path, output_path, extra_exits=None):
     """Convert a single RPGMaker map to clean format"""
 
     with open(rpgmaker_map_path, 'r', encoding='utf-8') as f:
@@ -128,13 +194,19 @@ def convert_map(rpgmaker_map_path, output_path):
         }
         npcs.append(npc)
 
+    # Extract portal/door triggers from Transfer Player events
+    exits = extract_exits_from_events(rpg_data['events'])
+    if extra_exits:
+        exits.extend(extra_exits)
+
     # Build clean output format
     clean_data = {
         "name": rpg_data['displayName'],
         "width": width,
         "height": height,
         "tiles": tiles,
-        "npcs": npcs
+        "npcs": npcs,
+        "exits": exits
     }
 
     # Write to output
@@ -147,25 +219,59 @@ def convert_map(rpgmaker_map_path, output_path):
     print(f"  NPCs: {len(npcs)}")
     for npc in npcs:
         print(f"    - {npc['name']} at ({npc['x']}, {npc['y']}) - {len(npc['dialogue']['lines'])} lines")
+    print(f"  Exits: {len(exits)}")
+    for exit_data in exits:
+        print(f"    - ({exit_data['trigger_x']}, {exit_data['trigger_y']}) -> "
+              f"{exit_data['target_scene']} @ ({exit_data['target_spawn_x']}, "
+              f"{exit_data['target_spawn_y']})")
     print()
 
+# NOTE: the real game has no simple walk-into-door (code 201) event from
+# Town of Endgame into Team Marathon (mapId 4) anywhere in the RPGMaker data -
+# verified by scanning every Map*.json for a code-201 command targeting
+# mapId 4; there is none. The only door out of Map002 with "Team Marathon" in
+# its labeling is event "To Inn" (a comment reads `<Label: Team Marathon>`),
+# but it actually transfers to mapId 9 ("Team Marathon - Retro"), not mapId 4.
+# The real mechanism for reaching mapId 4 is CommonEvents.json event #12
+# ("Crystal Main"), a menu-driven, multi-destination warp (its Team Marathon
+# branch targets x=12, y=15) - not a simple map door, and out of scope for
+# this phase's code-201 extractor.
+#
+# Phase 1a (the generic Scene/spawn_map/transitions scaffolding) needs one
+# working, bidirectional Town <-> Team Marathon door pair to validate the new
+# transition system end-to-end. Until a proper "team select" menu (mirroring
+# Crystal Main) is designed, this hand-authored placeholder stands in for it:
+# trigger tile chosen clear of existing doors/NPCs/player spawn in Town of
+# Endgame; target spawn coordinates reused from the real Crystal Main data
+# for authenticity. TODO(later phase): replace with a real in-fiction trigger
+# (or an actual team-select menu) once that mechanism is designed.
+TOWN_TO_TEAM_MARATHON_PLACEHOLDER = [{
+    "trigger_x": 30,
+    "trigger_y": 30,
+    "target_scene": "TeamMarathon",
+    "target_spawn_x": 12,
+    "target_spawn_y": 15,
+}]
+
 def main():
-    # Paths
+    # Paths. Output is resolved relative to this script's location (not a
+    # hardcoded absolute path) so this converter works correctly regardless
+    # of which git worktree/clone it's run from.
     rpgmaker_data_dir = Path("/home/atobey/src/endgame-of-sre-rpgmaker-mz/data")
-    output_dir = Path("/home/atobey/src/sregame/assets/data/maps")
+    output_dir = Path(__file__).resolve().parent.parent / "assets" / "data" / "maps"
 
     # Create output directory
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Convert maps
     maps_to_convert = [
-        ("Map002.json", "town_of_endgame.json"),  # Hub
-        ("Map004.json", "team_marathon.json"),     # Team Marathon interior
+        ("Map002.json", "town_of_endgame.json", TOWN_TO_TEAM_MARATHON_PLACEHOLDER),  # Hub
+        ("Map004.json", "team_marathon.json", None),  # Team Marathon interior
     ]
 
     print("Converting RPGMaker maps to clean format...\n")
 
-    for rpg_file, clean_file in maps_to_convert:
+    for rpg_file, clean_file, extra_exits in maps_to_convert:
         rpg_path = rpgmaker_data_dir / rpg_file
         out_path = output_dir / clean_file
 
@@ -173,7 +279,7 @@ def main():
             print(f"⚠ Skipping {rpg_file} (not found)")
             continue
 
-        convert_map(rpg_path, out_path)
+        convert_map(rpg_path, out_path, extra_exits=extra_exits)
 
     print("Conversion complete!")
     print(f"Output files written to: {output_dir}")

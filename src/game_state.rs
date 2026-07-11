@@ -16,8 +16,13 @@ pub enum GameState {
 pub enum Scene {
     #[default]
     TownOfEndgame,
-    #[allow(dead_code)]
     TeamMarathon,
+    TeamMarathonRetro,
+    TeamDisco,
+    TeamInferno,
+    MahoganyRow,
+    Intro,
+    End,
 }
 
 pub struct GameStatePlugin;

@@ -5,15 +5,30 @@ use crate::camera::{MainCamera, CameraFollow, CameraBounds};
 use crate::npc::{spawn_npc, Npc, NpcDialogue};
 use crate::instrumentation::GameTracer;
 use crate::assets::GameAssets;
-use crate::map_data::{MapData, tile_to_world, facing_from_string};
+use crate::map_data::{MapData, ExitData, tile_to_world, facing_from_string};
+use crate::player::Player;
 
 pub struct TilemapPlugin;
 
 impl Plugin for TilemapPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(bevy_ecs_tilemap::TilemapPlugin)
-            .add_systems(OnEnter(Scene::TownOfEndgame), spawn_town_of_endgame)
-            .add_systems(OnExit(Scene::TownOfEndgame), despawn_map);
+            .add_systems(OnEnter(Scene::TownOfEndgame), spawn_map)
+            .add_systems(OnEnter(Scene::TeamMarathon), spawn_map)
+            .add_systems(OnEnter(Scene::TeamMarathonRetro), spawn_map)
+            .add_systems(OnEnter(Scene::TeamDisco), spawn_map)
+            .add_systems(OnEnter(Scene::TeamInferno), spawn_map)
+            .add_systems(OnEnter(Scene::MahoganyRow), spawn_map)
+            .add_systems(OnEnter(Scene::Intro), spawn_map)
+            .add_systems(OnEnter(Scene::End), spawn_map)
+            .add_systems(OnExit(Scene::TownOfEndgame), despawn_map)
+            .add_systems(OnExit(Scene::TeamMarathon), despawn_map)
+            .add_systems(OnExit(Scene::TeamMarathonRetro), despawn_map)
+            .add_systems(OnExit(Scene::TeamDisco), despawn_map)
+            .add_systems(OnExit(Scene::TeamInferno), despawn_map)
+            .add_systems(OnExit(Scene::MahoganyRow), despawn_map)
+            .add_systems(OnExit(Scene::Intro), despawn_map)
+            .add_systems(OnExit(Scene::End), despawn_map);
     }
 }
 
@@ -58,29 +73,95 @@ impl CollisionMap {
     }
 }
 
-fn spawn_town_of_endgame(
+/// Exit (portal) triggers for the currently loaded map. Same resource
+/// lifecycle as `CollisionMap`: inserted by `spawn_map`, removed by
+/// `despawn_map`.
+#[derive(Resource)]
+pub struct MapExits(pub Vec<ExitData>);
+
+/// Set by the transition system just before switching scenes; consumed by
+/// `spawn_map` on the following `OnEnter` to place the player at the correct
+/// tile in the newly-loaded map. Absent on the very first scene load, since
+/// there's no incoming transition then.
+#[derive(Resource)]
+pub struct PendingArrival {
+    pub spawn_x: u32,
+    pub spawn_y: u32,
+}
+
+/// Per-scene map file + tileset lookup. Tileset keys are a contract with
+/// `assets::GameAssets::tilesets` (populated by scanning
+/// `assets/textures/tilesets/*.png`): "town_tileset" for the outdoor Town of
+/// Endgame map, "inside_tileset" for all interior maps.
+pub struct SceneConfig {
+    pub map_file: &'static str,
+    pub tileset_key: &'static str,
+}
+
+pub fn scene_config(scene: Scene) -> SceneConfig {
+    match scene {
+        Scene::TownOfEndgame => SceneConfig { map_file: "town_of_endgame", tileset_key: "town_tileset" },
+        Scene::TeamMarathon => SceneConfig { map_file: "team_marathon", tileset_key: "inside_tileset" },
+        Scene::TeamMarathonRetro => SceneConfig { map_file: "team_marathon_retro", tileset_key: "inside_tileset" },
+        Scene::TeamDisco => SceneConfig { map_file: "team_disco", tileset_key: "inside_tileset" },
+        Scene::TeamInferno => SceneConfig { map_file: "team_inferno", tileset_key: "inside_tileset" },
+        Scene::MahoganyRow => SceneConfig { map_file: "mahogany_row", tileset_key: "inside_tileset" },
+        Scene::Intro => SceneConfig { map_file: "intro", tileset_key: "inside_tileset" },
+        Scene::End => SceneConfig { map_file: "end", tileset_key: "inside_tileset" },
+    }
+}
+
+fn spawn_map(
     mut commands: Commands,
+    scene: Res<State<Scene>>,
     game_assets: Res<GameAssets>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut camera_query: Query<&mut CameraFollow, With<MainCamera>>,
+    mut player_query: Query<&mut Transform, With<Player>>,
+    pending_arrival: Option<Res<PendingArrival>>,
     tracer: Option<Res<GameTracer>>,
 ) {
-    info!("Loading Town of Endgame from map data");
+    let config = scene_config(*scene.get());
 
-    let map = match MapData::load("town_of_endgame") {
+    info!("Loading {:?} from map data ({})", scene.get(), config.map_file);
+
+    let map = match MapData::load(config.map_file) {
         Ok(m) => m,
         Err(e) => {
-            error!("Failed to load map: {:?}", e);
+            error!("Failed to load map '{}': {:?}", config.map_file, e);
+            // Don't leave a stale PendingArrival around for some later,
+            // unrelated scene load to accidentally consume - a portal that
+            // led nowhere shouldn't silently misplace the player next time
+            // a map *does* load successfully.
+            if pending_arrival.is_some() {
+                warn!("Discarding PendingArrival - target scene's map failed to load");
+                commands.remove_resource::<PendingArrival>();
+            }
             return;
         }
     };
 
     info!("Loaded map: {} ({}x{})", map.name, map.width, map.height);
 
+    // A missing tileset is a visual gap, not a logical one: the map's
+    // collision, exits and NPCs must still come up so the transition system
+    // works even for scenes whose art hasn't been authored yet (several
+    // interior scenes don't have clean map JSON *or* art yet - see
+    // scene_config). Fall back to an empty texture handle and keep going.
+    let texture_handle = match game_assets.tilesets.get(config.tileset_key).cloned() {
+        Some(handle) => handle,
+        None => {
+            warn!(
+                "Missing tileset '{}' for scene {:?} - rendering without tile art",
+                config.tileset_key, scene.get()
+            );
+            Handle::default()
+        }
+    };
+
     const TILE_SIZE: TilemapTileSize = TilemapTileSize { x: 48.0, y: 48.0 };
     const GRID_SIZE: TilemapGridSize = TilemapGridSize { x: 48.0, y: 48.0 };
 
-    let texture_handle = game_assets.town_tileset.clone();
     let map_size = TilemapSize { x: map.width, y: map.height };
     let tilemap_entity = commands.spawn_empty().id();
     let mut tile_storage = TileStorage::empty(map_size);
@@ -134,6 +215,7 @@ fn spawn_town_of_endgame(
         }
     }
     commands.insert_resource(collision_map);
+    commands.insert_resource(MapExits(map.exits.clone()));
 
     if let Ok(mut camera_follow) = camera_query.single_mut() {
         let map_width_pixels = map.width as f32 * TILE_SIZE.x;
@@ -152,23 +234,11 @@ fn spawn_town_of_endgame(
     for npc_data in &map.npcs {
         let world_pos = tile_to_world(npc_data.x, npc_data.y, map.width, map.height);
 
-        // Map sprite name to asset handle
-        let sprite_handle = match npc_data.sprite.as_str() {
-            "Nature" => game_assets.npc_nature.clone(),
-            "Mando" => game_assets.npc_mando.clone(),
-            "SF_Actor1" => game_assets.npc_sf_actor1.clone(),
-            "People1" => game_assets.npc_people1.clone(),
-            "Monster" => game_assets.npc_monster.clone(),
-            "casey" => game_assets.npc_casey.clone(),
-            "Actor1" => game_assets.npc_actor1.clone(),
-            "Actor2" => game_assets.npc_actor2.clone(),
-            "Evil" => game_assets.npc_evil.clone(),
-            "SF_Monster" => game_assets.npc_sf_monster.clone(),
-            "People4" => game_assets.npc_people4.clone(),
-            _ => {
-                warn!("Unknown NPC sprite: {} - skipping {}", npc_data.sprite, npc_data.name);
-                continue;
-            }
+        // Map sprite name to asset handle, looked up by filename stem from
+        // the data-driven GameAssets::npc_sprites map.
+        let Some(sprite_handle) = game_assets.npc_sprites.get(&npc_data.sprite).cloned() else {
+            warn!("Unknown NPC sprite: {} - skipping {}", npc_data.sprite, npc_data.name);
+            continue;
         };
 
         let portrait_path = if !npc_data.dialogue.portrait.is_empty() {
@@ -197,6 +267,20 @@ fn spawn_town_of_endgame(
 
         info!("Spawned NPC: {} at tile ({}, {})", npc_data.name, npc_data.x, npc_data.y);
     }
+
+    // If we arrived via a portal (see transitions.rs), place the player at
+    // the target spawn tile. If absent, this is either the very first scene
+    // load or a scene the player didn't reach via a portal - leave the
+    // player wherever it already is.
+    if let Some(arrival) = pending_arrival {
+        if let Ok(mut player_transform) = player_query.single_mut() {
+            let spawn_pos = tile_to_world(arrival.spawn_x, arrival.spawn_y, map.width, map.height);
+            player_transform.translation.x = spawn_pos.x;
+            player_transform.translation.y = spawn_pos.y;
+            info!("Placed player at incoming spawn tile ({}, {})", arrival.spawn_x, arrival.spawn_y);
+        }
+        commands.remove_resource::<PendingArrival>();
+    }
 }
 
 fn despawn_map(
@@ -207,5 +291,6 @@ fn despawn_map(
         commands.entity(entity).despawn();
     }
     commands.remove_resource::<CollisionMap>();
+    commands.remove_resource::<MapExits>();
     info!("Map despawned");
 }

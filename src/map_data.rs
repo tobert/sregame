@@ -10,6 +10,18 @@ pub struct MapData {
     pub height: u32,
     pub tiles: Vec<u32>,
     pub npcs: Vec<NpcData>,
+    #[serde(default)]
+    pub exits: Vec<ExitData>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ExitData {
+    pub trigger_x: u32,
+    pub trigger_y: u32,
+    /// Matches a `Scene` variant name (e.g. "TeamMarathon"), see `scene_from_str`.
+    pub target_scene: String,
+    pub target_spawn_x: u32,
+    pub target_spawn_y: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -51,6 +63,17 @@ pub fn tile_to_world(tile_x: u32, tile_y: u32, map_width: u32, map_height: u32) 
     Vec2::new(world_x, world_y)
 }
 
+/// Inverse of `tile_to_world`: maps a world-space position back to the tile
+/// coordinate that contains it, for a map of the given dimensions.
+pub fn world_to_tile(world_pos: Vec2, map_width: u32, map_height: u32) -> (i32, i32) {
+    const TILE_SIZE: f32 = 48.0;
+
+    let tile_x = (world_pos.x / TILE_SIZE + map_width as f32 / 2.0).floor() as i32;
+    let tile_y = (world_pos.y / TILE_SIZE + map_height as f32 / 2.0).floor() as i32;
+
+    (tile_x, tile_y)
+}
+
 pub fn facing_from_string(facing: &str) -> crate::npc::NpcFacing {
     match facing {
         "down" => crate::npc::NpcFacing::Down,
@@ -58,5 +81,135 @@ pub fn facing_from_string(facing: &str) -> crate::npc::NpcFacing {
         "right" => crate::npc::NpcFacing::Right,
         "up" => crate::npc::NpcFacing::Up,
         _ => crate::npc::NpcFacing::Down,
+    }
+}
+
+/// Maps a clean-JSON `target_scene` string (e.g. "TeamMarathon") to a `Scene`
+/// variant. Mirrors the `facing_from_string` idiom above. Returns `None` for
+/// unrecognized names so callers can log and skip rather than silently
+/// defaulting to the wrong scene.
+pub fn scene_from_str(name: &str) -> Option<crate::game_state::Scene> {
+    use crate::game_state::Scene;
+
+    match name {
+        "TownOfEndgame" => Some(Scene::TownOfEndgame),
+        "TeamMarathon" => Some(Scene::TeamMarathon),
+        "TeamMarathonRetro" => Some(Scene::TeamMarathonRetro),
+        "TeamDisco" => Some(Scene::TeamDisco),
+        "TeamInferno" => Some(Scene::TeamInferno),
+        "MahoganyRow" => Some(Scene::MahoganyRow),
+        "Intro" => Some(Scene::Intro),
+        "End" => Some(Scene::End),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::game_state::Scene;
+
+    #[test]
+    fn tile_to_world_and_back_round_trips() {
+        // Covers corners, map center, and the real trigger/spawn tiles used
+        // by the Town of Endgame <-> Team Marathon portal pair, so a broken
+        // world_to_tile (the inverse used by the transition system) fails
+        // loudly instead of silently landing the player on the wrong tile.
+        let cases: &[(u32, u32, u32, u32)] = &[
+            (0, 0, 34, 39),
+            (33, 38, 34, 39),
+            (17, 19, 34, 39),
+            (30, 30, 34, 39),
+            (12, 15, 24, 21),
+            (12, 16, 24, 21),
+            (8, 30, 34, 39),
+        ];
+
+        for &(tile_x, tile_y, width, height) in cases {
+            let world = tile_to_world(tile_x, tile_y, width, height);
+            let (round_tripped_x, round_tripped_y) = world_to_tile(world, width, height);
+            assert_eq!(
+                (tile_x as i32, tile_y as i32),
+                (round_tripped_x, round_tripped_y),
+                "tile ({tile_x}, {tile_y}) on a {width}x{height} map didn't round-trip \
+                 through world space (got world {world:?})"
+            );
+        }
+    }
+
+    #[test]
+    fn world_to_tile_is_stable_mid_tile() {
+        // A world position partway across a tile (not just its center) must
+        // still resolve to that same tile, not an adjacent one - this is
+        // what actually happens as the player walks continuously.
+        let width = 34;
+        let height = 39;
+        let tile_center = tile_to_world(10, 10, width, height);
+
+        for offset in [-20.0_f32, -1.0, 0.0, 1.0, 20.0] {
+            let nudged = Vec2::new(tile_center.x + offset, tile_center.y + offset);
+            assert_eq!(world_to_tile(nudged, width, height), (10, 10));
+        }
+    }
+
+    #[test]
+    fn scene_from_str_maps_all_known_variants() {
+        let cases = [
+            ("TownOfEndgame", Scene::TownOfEndgame),
+            ("TeamMarathon", Scene::TeamMarathon),
+            ("TeamMarathonRetro", Scene::TeamMarathonRetro),
+            ("TeamDisco", Scene::TeamDisco),
+            ("TeamInferno", Scene::TeamInferno),
+            ("MahoganyRow", Scene::MahoganyRow),
+            ("Intro", Scene::Intro),
+            ("End", Scene::End),
+        ];
+
+        for (name, expected) in cases {
+            assert_eq!(scene_from_str(name), Some(expected), "failed for '{name}'");
+        }
+    }
+
+    #[test]
+    fn scene_from_str_rejects_unknown_names() {
+        assert_eq!(scene_from_str("NotARealScene"), None);
+        assert_eq!(scene_from_str(""), None);
+        assert_eq!(scene_from_str("townofendgame"), None); // case-sensitive
+    }
+
+    #[test]
+    fn map_data_deserializes_exits() {
+        let json = r#"{
+            "name": "Test Map",
+            "width": 10,
+            "height": 10,
+            "tiles": [],
+            "npcs": [],
+            "exits": [
+                { "trigger_x": 1, "trigger_y": 2, "target_scene": "TeamMarathon",
+                  "target_spawn_x": 3, "target_spawn_y": 4 }
+            ]
+        }"#;
+
+        let map: MapData = serde_json::from_str(json).expect("valid map JSON should parse");
+        assert_eq!(map.exits.len(), 1);
+        assert_eq!(map.exits[0].trigger_x, 1);
+        assert_eq!(map.exits[0].target_scene, "TeamMarathon");
+    }
+
+    #[test]
+    fn map_data_exits_defaults_to_empty_when_absent() {
+        // Older/hand-written map JSON without an "exits" key must still
+        // parse (backward compatible), just with no portals.
+        let json = r#"{
+            "name": "Test Map",
+            "width": 10,
+            "height": 10,
+            "tiles": [],
+            "npcs": []
+        }"#;
+
+        let map: MapData = serde_json::from_str(json).expect("map JSON without exits should still parse");
+        assert!(map.exits.is_empty());
     }
 }

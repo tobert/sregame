@@ -633,5 +633,21 @@
         ]
       }
     }
+  ],
+  "exits": [
+    {
+      "trigger_x": 12,
+      "trigger_y": 16,
+      "target_scene": "TownOfEndgame",
+      "target_spawn_x": 8,
+      "target_spawn_y": 30
+    },
+    {
+      "trigger_x": 2,
+      "trigger_y": 9,
+      "target_scene": "End",
+      "target_spawn_x": 8,
+      "target_spawn_y": 5
+    }
   ]
 }
