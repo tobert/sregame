@@ -520,6 +520,11 @@ def main():
         ("inside_tileset.png", [
             ("Map004.json", "team_marathon.json"),        # base (not door-connected; see note above)
             ("Map009.json", "team_marathon_retro.json"),   # Retro (the real, door-connected location)
+            ("Map005.json", "team_disco.json"),
+            ("Map006.json", "team_inferno.json"),
+            ("Map007.json", "mahogany_row.json"),
+            ("Map010.json", "intro.json"),
+            ("Map003.json", "end.json"),
         ]),
     ]
 
