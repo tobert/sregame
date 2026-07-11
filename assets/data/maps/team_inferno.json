@@ -1674,6 +1674,7 @@
       "dialogue": {
         "speaker": "Shelly the Intern",
         "portrait": "Actor3",
+        "face_index": 3,
         "lines": [
           "These guys aren't paying me enough. They aren't paying me anything!",
           "The Boss brought in a new developer metrics tool to figure out our quality problems...",
@@ -1690,6 +1691,7 @@
       "dialogue": {
         "speaker": "Leah Dev",
         "portrait": "SF_Actor2",
+        "face_index": 3,
         "lines": [
           "I can't take it anymore! Can I tell you a secret?",
           "I'm interviewing around so I can have a life again.",
@@ -1707,6 +1709,7 @@
       "dialogue": {
         "speaker": "Kirito",
         "portrait": "SF_Actor1",
+        "face_index": 4,
         "lines": [
           "I started here months ago and it's like this isekai I watched where the guy has no powers and the starting town hates him.",
           "I really need to hit a year at this place or my resume's look terrible.",
@@ -1723,6 +1726,7 @@
       "dialogue": {
         "speaker": "Tenex",
         "portrait": "Monster",
+        "face_index": 1,
         "lines": [
           "I worked 100 hours last week. I get free food here so why would I go home?",
           "Oh, that incident? I told those nerds in Team Disco that I was reading their tables.",
@@ -1739,6 +1743,7 @@
       "dialogue": {
         "speaker": "The Boss",
         "portrait": "Monster",
+        "face_index": 3,
         "lines": [
           "These darn Millenials don't want to work. When I was a lad we wrote COBOL and we hustled and look at me! I turned out fine.",
           "The security bots are on my case about so-called vulnerabilities. I threatened the team with termination if they write bugs, so that's fixed."
@@ -1754,6 +1759,7 @@
       "dialogue": {
         "speaker": "Merc",
         "portrait": "SF_Actor3",
+        "face_index": 2,
         "lines": [
           "I just go with the flow. I get paid either way so who am I to complain? My rate's the same for nonsense as it is for good work."
         ]

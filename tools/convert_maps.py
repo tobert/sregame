@@ -121,23 +121,31 @@ def extract_dialogue_from_commands(commands, fallback_speaker, keep_lines_separa
     word-wrapped box got wrongly split into two paragraphs just because its
     first line happened to end in a period).
 
-    Each code-101 box can also carry an optional 5th "Show Face" parameter
-    (a VisuStella MessageCore name-box override) that's the name actually
-    displayed above the text in-game - distinct from, and sometimes quite
-    different from, the event's own RPGMaker-editor name (e.g. Map002's
-    event "Alls Johnpaw" displays as "Paws Alljohn"; Map003's "Doctor
-    Mcfire" displays as "Doctor McFire"). A single NPC event can also
-    contain more than one code-101 box using more than one face/name - most
-    often because Amy (the player) briefly interjects a one-line aside
-    into an NPC's own conversation. Our NpcData/DialogueData format has
-    only one speaker/portrait per NPC interaction, so both the effective
-    speaker name and the portrait are resolved via majority vote across
-    all of this event's code-101 boxes (falling back to `fallback_speaker`,
-    normally the event's own editor name, if no box ever set a name-box
-    override) rather than "whichever code-101 happened to run last" - the
-    previous behavior, which for e.g. Map003's "Dave" (3 boxes as Dave, 1
-    one-line comeback as Amy) showed *Amy's* portrait for the entire
-    4-line interaction because hers was the last code-101 seen.
+    Each code-101 box's parameters are, in order, [faceName, faceIndex,
+    background, position, speakerName] - the last (a VisuStella
+    MessageCore name-box override) being the name actually displayed above
+    the text in-game, distinct from, and sometimes quite different from,
+    the event's own RPGMaker-editor name (e.g. Map002's event "Alls
+    Johnpaw" displays as "Paws Alljohn"; Map003's "Doctor Mcfire" displays
+    as "Doctor McFire"). faceIndex (0-7) selects which cell of the
+    faceName sheet to show - RPGMaker MZ face sheets are a fixed 4-column
+    grid of 144x144px cells (see ImageManager.faceWidth/faceHeight in
+    rmmz_managers.js and Window_Base.prototype.drawFace in
+    rmmz_windows.js, both hardcoded regardless of a given sheet's actual
+    pixel dimensions), so faceIndex 0-7 spans a 4x2 grid. A single NPC
+    event can also contain more than one code-101 box using more than one
+    face/index/name - most often because Amy (the player) briefly
+    interjects a one-line aside into an NPC's own conversation. Our
+    NpcData/DialogueData format has only one speaker/portrait/face_index
+    per NPC interaction, so the effective speaker name, portrait, and face
+    index are all resolved via majority vote across all of this event's
+    code-101 boxes (falling back to `fallback_speaker`, normally the
+    event's own editor name, if no box ever set a name-box override, or to
+    face_index 0 if no box set a portrait) rather than "whichever code-101
+    happened to run last" - the previous behavior, which for e.g. Map003's
+    "Dave" (3 boxes as Dave, 1 one-line comeback as Amy) showed *Amy's*
+    portrait for the entire 4-line interaction because hers was the last
+    code-101 seen.
 
     `keep_lines_separate`, when set, keeps every code-401 line in a box as
     its own entry in the returned `lines` list instead of joining them with
@@ -159,6 +167,7 @@ def extract_dialogue_from_commands(commands, fallback_speaker, keep_lines_separa
             params = cmd['parameters']
             current = {
                 "portrait": params[0] if params[0] else "",
+                "face_index": params[1] if len(params) >= 2 else 0,
                 "speaker": params[4] if len(params) >= 5 and params[4] else "",
                 "raw_lines": [],
             }
@@ -176,6 +185,7 @@ def extract_dialogue_from_commands(commands, fallback_speaker, keep_lines_separa
 
     lines = []
     portraits = []
+    face_indices = []
     speakers = []
 
     for group in groups:
@@ -191,13 +201,18 @@ def extract_dialogue_from_commands(commands, fallback_speaker, keep_lines_separa
 
         if group['portrait']:
             portraits.append(group['portrait'])
+            # Paired with portrait, not tracked independently: a faceIndex
+            # is meaningless without knowing which sheet (portrait) it
+            # indexes into.
+            face_indices.append(group['face_index'])
         if group['speaker']:
             speakers.append(group['speaker'])
 
     speaker = _majority_vote(speakers, fallback_speaker)
     portrait = _majority_vote(portraits, "")
+    face_index = _majority_vote(face_indices, 0)
 
-    return speaker, portrait, lines
+    return speaker, portrait, face_index, lines
 
 
 # Per-event overrides keyed by (source RPGMaker filename, event id), for the
@@ -261,7 +276,7 @@ def extract_npcs(rpg_data, source_filename=""):
         if not image['characterName'] and 'synthetic_sprite' not in override:
             continue
 
-        speaker, portrait, lines = extract_dialogue_from_commands(
+        speaker, portrait, face_index, lines = extract_dialogue_from_commands(
             page['list'],
             fallback_speaker=event['name'],
             keep_lines_separate=override.get('keep_lines_separate', False),
@@ -282,6 +297,7 @@ def extract_npcs(rpg_data, source_filename=""):
             "dialogue": {
                 "speaker": speaker,
                 "portrait": portrait,
+                "face_index": face_index,
                 "lines": lines
             }
         })

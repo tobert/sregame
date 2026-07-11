@@ -1530,6 +1530,7 @@
       "dialogue": {
         "speaker": "Courage",
         "portrait": "Monster",
+        "face_index": 2,
         "lines": [
           "I committed a buffer overflow fix right before Evie rang the bell. I still have the cognitive zoomies so I'm going to write some Rust!",
           "It's a full moon, the sky is clear, and I love coding. Awooooooo!"
@@ -1545,6 +1546,7 @@
       "dialogue": {
         "speaker": "Ocean",
         "portrait": "People4",
+        "face_index": 0,
         "lines": [
           "I'm not the best programmer and Luna's not the best tester. As a pair we kick butt.",
           "It's almost as if we and the computers and the code all become one in the simulation.",
@@ -1561,6 +1563,7 @@
       "dialogue": {
         "speaker": "Nyaanager Evie",
         "portrait": "Nature",
+        "face_index": 4,
         "lines": [
           "We had a tricky incident today so I took the pager and told my team to scram.",
           "I love my team and they totally rock. I do my best to protect them but the pressure from Mahogany Row is getting to me.",
@@ -1577,6 +1580,7 @@
       "dialogue": {
         "speaker": "Seventh Daughter of Nine",
         "portrait": "People2",
+        "face_index": 5,
         "lines": [
           "Oh yeah, we had an incident. I only know the gist of it right now. We'll do interviews next week after the team has processed a bit.",
           "Xela was bragging about the error budget so we're comparing it to the timeline to incident estimate customer impact."
@@ -1592,6 +1596,7 @@
       "dialogue": {
         "speaker": "Luna",
         "portrait": "People2",
+        "face_index": 1,
         "lines": [
           "I paired with my bestie, Ocean today. I used to be skeptical about pairing and now I'm one of THOSE PEOPLE.",
           "Nyaanager and Ocean were so paitent with me while I got the hang of it. I look forward to it now."
@@ -1607,6 +1612,7 @@
       "dialogue": {
         "speaker": "Doctor McFire",
         "portrait": "DrMcfire",
+        "face_index": 0,
         "lines": [
           "On-call is such a rush. One minute you're typing away and the next you're the incident commander.",
           "When I went from the SLO alert to traces I immediately knew I screwed up. Rolling forward was just as easy as rollback so I cut a pull request.",
@@ -1623,6 +1629,7 @@
       "dialogue": {
         "speaker": "Hidaslo Xela",
         "portrait": "People3",
+        "face_index": 6,
         "lines": [
           "I know I'm not supposed to gloat but the error budget alert was the first to fire and we were on it before customers noticed.",
           "Nobody else is doing SLOs yet. I believe SLOs will help the Disco push back on Mahogany Row and keep Inferno honest."
@@ -1638,6 +1645,7 @@
       "dialogue": {
         "speaker": "Boba Jacobian",
         "portrait": "casey",
+        "face_index": 4,
         "lines": [
           "Nyaanager runs a Westrum generative team. She doesn't call it that though. This is the way."
         ]

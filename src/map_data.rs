@@ -56,6 +56,13 @@ pub struct NpcData {
 pub struct DialogueData {
     pub speaker: String,
     pub portrait: String,
+    /// Which cell of `portrait`'s face sheet to display (RPGMaker MZ code-101
+    /// "Show Face" `faceIndex`, 0-7 in the standard 4-column x 2-row 144x144px
+    /// grid layout - see tools/convert_maps.py's
+    /// `extract_dialogue_from_commands`). Defaults to 0 (top-left cell) for
+    /// map JSON predating this field.
+    #[serde(default)]
+    pub face_index: u32,
     pub lines: Vec<String>,
 }
 
@@ -258,6 +265,68 @@ mod tests {
         }
 
         assert!(missing.is_empty(), "missing NPC art assets:\n{}", missing.join("\n"));
+    }
+
+    #[test]
+    fn dialogue_data_face_index_round_trips() {
+        // A code-101 box referencing e.g. `['casey', 4, 0, 0, 'Boba Jacobian']`
+        // (see tools/convert_maps.py::extract_dialogue_from_commands) must
+        // carry faceIndex 4 through to DialogueData unchanged, so the
+        // dialogue UI crops the correct cell of the face sheet.
+        let json = r#"{
+            "name": "Test Map",
+            "width": 10,
+            "height": 10,
+            "tiles": [],
+            "npcs": [
+                {
+                    "name": "Boba Jacobian",
+                    "x": 1,
+                    "y": 2,
+                    "sprite": "Actor1",
+                    "facing": "down",
+                    "dialogue": {
+                        "speaker": "Boba Jacobian",
+                        "portrait": "casey",
+                        "face_index": 4,
+                        "lines": ["Hello."]
+                    }
+                }
+            ]
+        }"#;
+
+        let map: MapData = serde_json::from_str(json).expect("valid map JSON should parse");
+        assert_eq!(map.npcs[0].dialogue.face_index, 4);
+    }
+
+    #[test]
+    fn dialogue_data_face_index_defaults_to_zero_when_absent() {
+        // Older/hand-written map JSON without a "face_index" key must still
+        // parse (backward compatible), defaulting to the sheet's top-left
+        // cell rather than failing to deserialize.
+        let json = r#"{
+            "name": "Test Map",
+            "width": 10,
+            "height": 10,
+            "tiles": [],
+            "npcs": [
+                {
+                    "name": "Nature Spirit",
+                    "x": 1,
+                    "y": 2,
+                    "sprite": "Nature",
+                    "facing": "down",
+                    "dialogue": {
+                        "speaker": "Nature Spirit",
+                        "portrait": "Nature",
+                        "lines": ["Hello."]
+                    }
+                }
+            ]
+        }"#;
+
+        let map: MapData = serde_json::from_str(json).expect("map JSON without face_index should still parse");
+        assert_eq!(map.npcs[0].dialogue.face_index, 0);
     }
 
     #[test]

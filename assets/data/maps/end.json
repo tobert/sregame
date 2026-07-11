@@ -681,6 +681,7 @@
       "dialogue": {
         "speaker": "Dave",
         "portrait": "Evil",
+        "face_index": 3,
         "lines": [
           "GAME OVER MAN!",
           "Haha not really. $#@@*** this though. I gave them the best Kubers and somehow they always have excuses for their outages.",
@@ -698,6 +699,7 @@
       "dialogue": {
         "speaker": "Amy Tobey",
         "portrait": "Amy",
+        "face_index": 0,
         "lines": [
           "The Endgame of SRE",
           "Amy Tobey | @renice@hachyderm.io",
@@ -714,6 +716,7 @@
       "dialogue": {
         "speaker": "Agi Lecoach",
         "portrait": "Actor2",
+        "face_index": 3,
         "lines": [
           "I work with all the teams and it's unbelievable how different they are!",
           "The brass hangs out in Mahogany Row. They act like they're the adults in the room but they're just people.",
@@ -732,6 +735,7 @@
       "dialogue": {
         "speaker": "Glenn Gary",
         "portrait": "Actor1",
+        "face_index": 4,
         "lines": [
           "How am I supposed to sell this product when it keeps crashing in front of prospects!?",
           "The Marathon dudes are always taking days off and laid back. Somehow, their product sells itself.",
@@ -749,6 +753,7 @@
       "dialogue": {
         "speaker": "Frau Barella",
         "portrait": "People4",
+        "face_index": 7,
         "lines": [
           "The great style unification of 2021 is the greatest achievement of our career!",
           "Customers still complain about usability. It's like. Our stuff is great, but it doesn't quite come to gether."
@@ -764,6 +769,7 @@
       "dialogue": {
         "speaker": "Casey",
         "portrait": "casey",
+        "face_index": 0,
         "lines": [
           "If you know who I am I don't know why you're surprised to find me here."
         ]
@@ -778,6 +784,7 @@
       "dialogue": {
         "speaker": "Managear Greg",
         "portrait": "Greg",
+        "face_index": 0,
         "lines": [
           "As the manager, I protect my people from the politics of this place.",
           "My director says I always have to have a plan for every problem so we're kinda stuck. I don't know what to do."
@@ -793,6 +800,7 @@
       "dialogue": {
         "speaker": "Devo Pestorius",
         "portrait": "People1",
+        "face_index": 5,
         "lines": [
           "Our CI/CD is amazing, I should know. So why the heck are we so slow!?",
           "I hate how everyone hides behind their counter and expects me to make everything work in the end."
@@ -808,6 +816,7 @@
       "dialogue": {
         "speaker": "Polly Math",
         "portrait": "People1",
+        "face_index": 3,
         "lines": [
           "I need to fix this bug then check in the code I started this morning but then BAM! an incident and tests to fix and patch my kernels",
           "Why would you bring up ADHD?"
@@ -823,6 +832,7 @@
       "dialogue": {
         "speaker": "Cody",
         "portrait": "People1",
+        "face_index": 4,
         "lines": [
           "Stories are never ready for us to work on so I spend all my time chasing requirements."
         ]
@@ -837,6 +847,7 @@
       "dialogue": {
         "speaker": "Cary Erguy",
         "portrait": "People2",
+        "face_index": 4,
         "lines": [
           "I talk to the customers so the engineers don't have to.",
           "I'm a people person!"
@@ -852,6 +863,7 @@
       "dialogue": {
         "speaker": "Tenchi",
         "portrait": "People1",
+        "face_index": 2,
         "lines": [
           "We all love our work but we're having trouble with our velocity.",
           "We recently split up some of the projects to work on more independently, so we could keep up with the incoming requests.",
@@ -868,6 +880,7 @@
       "dialogue": {
         "speaker": "Pandora",
         "portrait": "Actor2",
+        "face_index": 5,
         "lines": [
           "I finally did it! I showed the customer my sweet a dark mode demo and they demanded we build the before they'll talk about a deal.",
           "Our service doesn't really need themes but I knew this prospect would love it."
@@ -883,6 +896,7 @@
       "dialogue": {
         "speaker": "Cee Eeoh",
         "portrait": "People3",
+        "face_index": 0,
         "lines": [
           "Pandora opened up a lead for us. The customer loved the dark mode mockup.",
           "I double clicked on that vision and had an epiphany. What if customers could theme the whole site!? Should be easy.",
@@ -899,6 +913,7 @@
       "dialogue": {
         "speaker": "Vee Peapod",
         "portrait": "People4",
+        "face_index": 6,
         "lines": [
           "I heard Cee Eeoh needs a new color wheel in the app so I told Team Disco to get that ready as soon as possible."
         ]
@@ -913,6 +928,7 @@
       "dialogue": {
         "speaker": "Mistress of Scrum",
         "portrait": "Monster",
+        "face_index": 5,
         "lines": [
           "We are forming a tiger team to implement the new Pantone values right away."
         ]
@@ -927,6 +943,7 @@
       "dialogue": {
         "speaker": "Gantt",
         "portrait": "SF_Monster",
+        "face_index": 4,
         "lines": [
           "Why is it so hard for these meatbags to understand our SDLC? They call it Waterscrumfall, whatever that means.",
           "These fools write down stories in messy English. Hah! One thing at a time, that's the way!"
@@ -942,6 +959,7 @@
       "dialogue": {
         "speaker": "Desi Goner",
         "portrait": "SF_Actor1",
+        "face_index": 5,
         "lines": [
           "The Boss from Team Inferno sent me here to finish up the critical user journeys for themes or something?",
           "I asked all these people what the feature is and got 19.2 answers!"
@@ -957,6 +975,7 @@
       "dialogue": {
         "speaker": "Robert Bob",
         "portrait": "People4",
+        "face_index": 4,
         "lines": [
           "Team Disco's velocity is 40 points and I think they can do better so I always assign them 50 or more."
         ]
@@ -971,6 +990,7 @@
       "dialogue": {
         "speaker": "The Director",
         "portrait": "SF_Actor1",
+        "face_index": 7,
         "lines": [
           "Glad you stopped by. I know you're trying to focus on this sociotechnical thing but...",
           "with your skills you could be an asset to the team!",
@@ -987,6 +1007,7 @@
       "dialogue": {
         "speaker": "The Boss",
         "portrait": "Monster",
+        "face_index": 3,
         "lines": [
           "These darn Millenials don't want to work. When I was a developer I hustled every hour of every day.",
           "I did my time and got promoted. Now I make sure people are working. It's hard job but someone has to keep the pressure on.",
@@ -1003,6 +1024,7 @@
       "dialogue": {
         "speaker": "Tenex",
         "portrait": "Monster",
+        "face_index": 1,
         "lines": [
           "I don't get why these lazy jerks complain so much. I worked 100 hours last week and look at me! I'm fine.",
           "Mahogany Row loves me! They come straight to me with the most important work. Planning is for nerds.",
@@ -1020,6 +1042,7 @@
       "dialogue": {
         "speaker": "Shelly the Intern",
         "portrait": "Actor3",
+        "face_index": 3,
         "lines": [
           "These guys aren't paying me enough. They aren't paying me anything!",
           "I try to work but I don't even have access. I pass the time on my phone and I feel awful about it."
@@ -1035,6 +1058,7 @@
       "dialogue": {
         "speaker": "Leah Dev",
         "portrait": "SF_Actor2",
+        "face_index": 3,
         "lines": [
           "I can't take it anymore! Can I tell you a secret?",
           "Tenex breaks things all the time and I have to clean up after him so he can \"innovate\".",
@@ -1052,6 +1076,7 @@
       "dialogue": {
         "speaker": "Merc",
         "portrait": "SF_Actor3",
+        "face_index": 2,
         "lines": [
           "I just go with the flow. I get paid either way so who am I to complain? My rate's the same for nonsense as it is for good work.",
           "Who goes to work to be happy? I'm here for the money. Now I must go, I just got a new ticket to work on."
@@ -1067,6 +1092,7 @@
       "dialogue": {
         "speaker": "Kirito",
         "portrait": "SF_Actor1",
+        "face_index": 4,
         "lines": [
           "I started here months ago and it's like this isekai I watched where the guy has no powers and the starting town hates him.",
           "しょうがないね。That sounds either hilarious or horrible. I met The Boss and Tenex so I'm guessing horrible.",
@@ -1083,6 +1109,7 @@
       "dialogue": {
         "speaker": "Rick",
         "portrait": "Monster",
+        "face_index": 2,
         "lines": [
           "I got a few hours of solid coding in today and Nyaanager told me to take off. It's a full moon tonight. She's so thoughtful!"
         ]
@@ -1097,6 +1124,7 @@
       "dialogue": {
         "speaker": "Seventh Daughter of Nine",
         "portrait": "People2",
+        "face_index": 5,
         "lines": [
           "Timelines are the hardest part of the incident for me to write up so I'm getting a start on it.",
           "I'm glad the team has the weekend to process. They tell me everything because I treat the stories they tell as sacred.",
@@ -1113,6 +1141,7 @@
       "dialogue": {
         "speaker": "Hidaslo Xela",
         "portrait": "People3",
+        "face_index": 6,
         "lines": [
           "I know I'm not supposed to gloat but the error budget alert was the first to fire and we were on it before customers noticed."
         ]
@@ -1127,6 +1156,7 @@
       "dialogue": {
         "speaker": "Nyaanager Evie",
         "portrait": "Nature",
+        "face_index": 4,
         "lines": [
           "We had a tricky incident today so I took the pager and told my team to scram. Maybe this is weird but I'm excited for the retro!",
           "Sure, I could get another hour or two out of them. If they're happy next week, we'll make it up and then some."
@@ -1142,6 +1172,7 @@
       "dialogue": {
         "speaker": "Ocean",
         "portrait": "People4",
+        "face_index": 0,
         "lines": [
           "I'm not the best programmer and Luna's not the best tester. As a pair we kick butt.",
           "It's almost as if we and the computers and the code all become one in the simulation.",
@@ -1158,6 +1189,7 @@
       "dialogue": {
         "speaker": "Luna",
         "portrait": "People2",
+        "face_index": 1,
         "lines": [
           "I paired with my bestie, Ocean today. I used to be skeptical about pairing but it was a blast!",
           "It was going great and then we had an incident. We weren't involved but we overheard it was going on and couldn't look away."
@@ -1173,6 +1205,7 @@
       "dialogue": {
         "speaker": "Doctor McFire",
         "portrait": "DrMcfire",
+        "face_index": 0,
         "lines": [
           "Coordinating tricky incidents is like slaying as a lead guitar on stage.",
           "You get in the zone, time flies by, and then it's over and your mind buzzes for hours."
