@@ -15,10 +15,17 @@ pub struct MapData {
     /// *same* atlas as `tiles`, same shape as `tiles`. 0 means "no
     /// upper-layer decoration on this cell". Produced by
     /// tools/convert_maps.py from RPGMaker's per-tile 0x10 "higher" flag.
+    /// Defaults to empty for map JSON predating this field; an absent index
+    /// renders as tile 0 (blank), same as an explicit empty array.
+    #[serde(default)]
     pub upper_tiles: Vec<u32>,
     /// Per-cell fully-blocked flag (row-major, same shape as `tiles`),
     /// baked from RPGMaker tileset passability flags by
-    /// tools/convert_maps.py. See CollisionMap in tilemap.rs.
+    /// tools/convert_maps.py. See CollisionMap in tilemap.rs. Defaults to
+    /// empty for map JSON predating this field; an absent index then reads
+    /// as blocked (fail closed) via `.unwrap_or(true)` in tilemap.rs, not
+    /// walkable.
+    #[serde(default)]
     pub collision: Vec<bool>,
     pub npcs: Vec<NpcData>,
     #[serde(default)]

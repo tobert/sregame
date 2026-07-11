@@ -294,7 +294,19 @@ class TileCompositor:
         return atlas
 
 
-def convert_tiles_and_collision(rpg_data, tileset_entry):
+def convert_tiles_and_collision(rpg_data, tileset_entry, compositor):
+    """Bake one map's tiles/upper_tiles/collision using the given
+    (possibly shared) TileCompositor. Callers that pass the *same*
+    compositor instance across multiple maps get all of those maps'
+    distinct tiles deduplicated into one shared atlas - required whenever
+    more than one map is meant to share an output atlas file/tileset_key
+    (see build_tileset_group in main()); passing a fresh compositor per
+    map would silently make each map's baked tile indices only valid
+    against its own atlas, while every map after the first overwrites
+    that atlas file on disk with its own - a real bug we hit and fixed
+    while wiring up Team Marathon + Team Marathon Retro, both of which
+    share the "inside_tileset" key.
+    """
     width = rpg_data['width']
     height = rpg_data['height']
     data = rpg_data['data']
@@ -318,9 +330,6 @@ def convert_tiles_and_collision(rpg_data, tileset_entry):
         raise ValueError(
             f"expected 8192 tileset flags (tilesets[id]['flags']), got {len(flags)}"
         )
-
-    sheets = load_tileset_sheets(tileset_entry['tilesetNames'], RPGMAKER_TILESETS_DIR)
-    compositor = TileCompositor(flags, sheets)
 
     tiles = [0] * num_cells
     upper_tiles = [0] * num_cells
@@ -366,13 +375,11 @@ def convert_tiles_and_collision(rpg_data, tileset_entry):
                 or x == 0 or x == width - 1 or y == 0 or y == height - 1
             )
 
-    atlas_image = compositor.build_atlas_image()
     stats = {
-        "atlas_tile_count": len(compositor.atlas_images),
         "blocked_cells": sum(collision),
         "upper_cells": sum(1 for v in upper_tiles if v != 0),
     }
-    return tiles, upper_tiles, collision, atlas_image, stats
+    return tiles, upper_tiles, collision, stats
 
 
 # ---------------------------------------------------------------------------
@@ -383,8 +390,12 @@ def load_tilesets_json():
         return json.load(f)
 
 
-def convert_map(rpgmaker_map_path, output_path, atlas_output_path, tilesets_json):
-    """Convert a single RPGMaker map to clean format + a composited atlas."""
+def convert_map(rpgmaker_map_path, output_path, tileset_entry, compositor):
+    """Convert a single RPGMaker map to clean format, baking its tiles into
+    the given (possibly shared) compositor. Does NOT write the atlas image -
+    callers sharing one compositor across multiple maps must save the atlas
+    themselves once, after all of those maps have been converted (see
+    build_tileset_group)."""
 
     with open(rpgmaker_map_path, 'r', encoding='utf-8') as f:
         rpg_data = json.load(f)
@@ -392,16 +403,10 @@ def convert_map(rpgmaker_map_path, output_path, atlas_output_path, tilesets_json
     width = rpg_data['width']
     height = rpg_data['height']
     tileset_id = rpg_data['tilesetId']
-    tileset_entry = tilesets_json[tileset_id]
-    if tileset_entry is None:
-        raise ValueError(f"tileset id {tileset_id} not present in Tilesets.json")
 
-    tiles, upper_tiles, collision, atlas_image, stats = convert_tiles_and_collision(
-        rpg_data, tileset_entry
+    tiles, upper_tiles, collision, stats = convert_tiles_and_collision(
+        rpg_data, tileset_entry, compositor
     )
-
-    atlas_output_path.parent.mkdir(parents=True, exist_ok=True)
-    atlas_image.save(atlas_output_path)
 
     npcs = extract_npcs(rpg_data)
     exits = extract_exits_from_events(rpg_data['events'])
@@ -424,11 +429,6 @@ def convert_map(rpgmaker_map_path, output_path, atlas_output_path, tilesets_json
     print(f"Converted {rpgmaker_map_path.name}")
     print(f"  -> {output_path}")
     print(
-        f"  -> {atlas_output_path} "
-        f"({atlas_image.width}x{atlas_image.height}px, "
-        f"{stats['atlas_tile_count']} unique composited tiles)"
-    )
-    print(
         f"  Map: {clean_data['name']} ({width}x{height}), "
         f"tileset {tileset_id} ({tileset_entry['name']})"
     )
@@ -447,6 +447,53 @@ def convert_map(rpgmaker_map_path, output_path, atlas_output_path, tilesets_json
     print()
 
 
+def build_tileset_group(entries, tilesets_json, atlas_output_path):
+    """Convert every map in `entries` (a list of (rpg_file, clean_file)
+    pairs) into one *shared* atlas at `atlas_output_path`, deduplicating
+    composited tiles across all of them via one TileCompositor instance.
+
+    This matters whenever more than one map is meant to share an output
+    atlas/tileset_key (e.g. "inside_tileset" is used by every interior
+    scene, see tilemap.rs::scene_config): giving each map its own
+    from-scratch compositor would make each map's baked tile indices valid
+    only against its own atlas, while whichever map converts last would
+    silently overwrite the shared atlas file on disk with just its own
+    tiles - corrupting every other map's indices without any error. This
+    was a real bug caught while wiring up Team Marathon + Team Marathon
+    Retro, both "inside_tileset".
+    """
+    if not entries:
+        return
+
+    first_rpg_file = entries[0][0]
+    with open(RPGMAKER_DATA_DIR / first_rpg_file, encoding="utf-8") as f:
+        tileset_id = json.load(f)['tilesetId']
+    tileset_entry = tilesets_json[tileset_id]
+    if tileset_entry is None:
+        raise ValueError(f"tileset id {tileset_id} not present in Tilesets.json")
+
+    flags = tileset_entry['flags']
+    sheets = load_tileset_sheets(tileset_entry['tilesetNames'], RPGMAKER_TILESETS_DIR)
+    compositor = TileCompositor(flags, sheets)
+
+    for rpg_file, clean_file in entries:
+        rpg_path = RPGMAKER_DATA_DIR / rpg_file
+        if not rpg_path.exists():
+            print(f"Skipping {rpg_file} (not found)")
+            continue
+        convert_map(rpg_path, OUTPUT_MAPS_DIR / clean_file, tileset_entry, compositor)
+
+    atlas_image = compositor.build_atlas_image()
+    atlas_output_path.parent.mkdir(parents=True, exist_ok=True)
+    atlas_image.save(atlas_output_path)
+    print(
+        f"Wrote shared atlas {atlas_output_path} "
+        f"({atlas_image.width}x{atlas_image.height}px, "
+        f"{len(compositor.atlas_images)} unique composited tiles across "
+        f"{len(entries)} map(s))\n"
+    )
+
+
 # NOTE on Team Marathon (mapId 4) vs Team Marathon - Retro (mapId 9): the
 # real game has no simple walk-into-door (code 201) event from Town of
 # Endgame into mapId 4 anywhere in the RPGMaker data - verified by scanning
@@ -463,25 +510,23 @@ def convert_map(rpgmaker_map_path, output_path, atlas_output_path, tilesets_json
 def main():
     tilesets_json = load_tilesets_json()
 
-    # (rpgmaker map file, clean output json, composited atlas png)
-    maps_to_convert = [
-        ("Map002.json", "town_of_endgame.json", "town_tileset.png"),       # Hub (Outside tileset)
-        ("Map004.json", "team_marathon.json", "inside_tileset.png"),      # Team Marathon base (not door-connected; see note above)
-        ("Map009.json", "team_marathon_retro.json", "inside_tileset.png"),  # Team Marathon - Retro (the real, door-connected location)
+    # Maps sharing an atlas file (tileset_key) must be converted together
+    # via build_tileset_group so their tiles dedupe into one shared atlas -
+    # see its docstring. (rpg file, clean output json) pairs per group.
+    tileset_groups = [
+        ("town_tileset.png", [
+            ("Map002.json", "town_of_endgame.json"),  # Hub (Outside tileset)
+        ]),
+        ("inside_tileset.png", [
+            ("Map004.json", "team_marathon.json"),        # base (not door-connected; see note above)
+            ("Map009.json", "team_marathon_retro.json"),   # Retro (the real, door-connected location)
+        ]),
     ]
 
     print("Converting RPGMaker maps to clean format...\n")
 
-    for rpg_file, clean_file, atlas_file in maps_to_convert:
-        rpg_path = RPGMAKER_DATA_DIR / rpg_file
-        out_path = OUTPUT_MAPS_DIR / clean_file
-        atlas_path = OUTPUT_TILESETS_DIR / atlas_file
-
-        if not rpg_path.exists():
-            print(f"Skipping {rpg_file} (not found)")
-            continue
-
-        convert_map(rpg_path, out_path, atlas_path, tilesets_json)
+    for atlas_file, entries in tileset_groups:
+        build_tileset_group(entries, tilesets_json, OUTPUT_TILESETS_DIR / atlas_file)
 
     print("Conversion complete!")
     print(f"Map output: {OUTPUT_MAPS_DIR}")

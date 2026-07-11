@@ -4188,13 +4188,6 @@
       "target_scene": "MahoganyRow",
       "target_spawn_x": 16,
       "target_spawn_y": 10
-    },
-    {
-      "trigger_x": 30,
-      "trigger_y": 30,
-      "target_scene": "TeamMarathon",
-      "target_spawn_x": 12,
-      "target_spawn_y": 15
     }
   ]
 }
