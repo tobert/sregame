@@ -1443,6 +1443,7 @@
       "dialogue": {
         "speaker": "Pandora",
         "portrait": "Actor2",
+        "face_index": 5,
         "lines": [
           "I finally did it! I showed a prospect my sweet a dark mode demo and they demanded we build the before they'll talk about a deal."
         ]
@@ -1457,6 +1458,7 @@
       "dialogue": {
         "speaker": "Robert Bob",
         "portrait": "People4",
+        "face_index": 4,
         "lines": [
           "Team Disco's velocity is 40 points and I think they can do better so I always assign them 50 or more."
         ]
@@ -1471,6 +1473,7 @@
       "dialogue": {
         "speaker": "Directrix Tina",
         "portrait": "SF_Actor1",
+        "face_index": 7,
         "lines": [
           "Oh hey Amy, glad you stopped by. I asked Managear Greg to be accountable for the incident but he keeps coming back with excuses."
         ]
@@ -1485,6 +1488,7 @@
       "dialogue": {
         "speaker": "Cee Eeoh",
         "portrait": "People3",
+        "face_index": 0,
         "lines": [
           "Pandora opened up a lead for us. The prospect loved the dark mode mockup. I, I mean we, need that logo.",
           "I double clicked on that vision and had an epiphany. What if customers could theme the whole site!? Should be easy.",
@@ -1501,6 +1505,7 @@
       "dialogue": {
         "speaker": "Vee Peapod",
         "portrait": "People4",
+        "face_index": 6,
         "lines": [
           "Cee Eeoh needs a new color scheme in the app so I told Team Disco to drop everything and get it done.",
           "They complained about interrupting their sprint but I'm going for a promotion and this will win it for me."
@@ -1516,6 +1521,7 @@
       "dialogue": {
         "speaker": "Mistress of Scrum",
         "portrait": "Monster",
+        "face_index": 5,
         "lines": [
           "Team Disco complained bitterly when I reshuffled their sprint. It's not like I can tell Vee Peapod no, right?"
         ]
@@ -1530,6 +1536,7 @@
       "dialogue": {
         "speaker": "Mervin",
         "portrait": "SF_Monster",
+        "face_index": 4,
         "lines": [
           "I made a perfect waterfall plan for the feature, precise down to the story point and millisecond. Not that anybody cares."
         ]

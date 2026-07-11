@@ -873,6 +873,7 @@
       "dialogue": {
         "speaker": "Polly Math",
         "portrait": "People1",
+        "face_index": 3,
         "lines": [
           "I need to fix this bug then check in the code I started this morning. That incident really threw me off my groove.",
           "Managear says my promotion isn't looking good because I don't close enough tickets. Everything would fall to pieces without me!",
@@ -889,6 +890,7 @@
       "dialogue": {
         "speaker": "Cody",
         "portrait": "People1",
+        "face_index": 4,
         "lines": [
           "Stories are never ready for us to work on so I spend all my time chasing requirements."
         ]
@@ -903,6 +905,7 @@
       "dialogue": {
         "speaker": "Devo Pestorius",
         "portrait": "People1",
+        "face_index": 5,
         "lines": [
           "Our deploys are so solid that people keep asking me to work on other things.",
           "What they don't realize is that it takes a lot of work to keep it that way!"
@@ -918,6 +921,7 @@
       "dialogue": {
         "speaker": "Isabella",
         "portrait": "Isabella",
+        "face_index": 0,
         "lines": [
           "Am I going to get fired!?",
           "We're so far behind. They keep giving us more work than we can do. I feel stretched to my limit!"
@@ -933,6 +937,7 @@
       "dialogue": {
         "speaker": "Managear Greg",
         "portrait": "Greg",
+        "face_index": 0,
         "lines": [
           "My people work so hard and it feels like we just cant win. I really hope this retro will help."
         ]
@@ -947,6 +952,7 @@
       "dialogue": {
         "speaker": "Dom",
         "portrait": "People2",
+        "face_index": 4,
         "lines": [
           "I talk to the customers so the engineers don't have to.",
           "I'm a people person!"

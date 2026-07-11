@@ -3996,6 +3996,7 @@
       "dialogue": {
         "speaker": "Boba Jacobian",
         "portrait": "casey",
+        "face_index": 4,
         "lines": [
           "Nyaanager runs a Westrum generative team. She doesn't call it that though. This is the way."
         ]
@@ -4010,6 +4011,7 @@
       "dialogue": {
         "speaker": "Desi Goner",
         "portrait": "SF_Actor1",
+        "face_index": 5,
         "lines": [
           "The Boss from Team Inferno sent me here to finish up the critical user journeys for themes or something?",
           "I asked all these people what the feature is and got 19.2 answers!"
@@ -4025,6 +4027,7 @@
       "dialogue": {
         "speaker": "Tenchi Reader",
         "portrait": "People1",
+        "face_index": 2,
         "lines": [
           "We all love our work but we're having trouble with our velocity.",
           "We recently split up some of the projects to work on more independently, so we could keep up with the incoming requests.",
@@ -4041,6 +4044,7 @@
       "dialogue": {
         "speaker": "Courage",
         "portrait": "Monster",
+        "face_index": 2,
         "lines": [
           "Fixing the database schema was intense. Just thinking about it gives me cognitive zoomies!",
           "It's a full moon, the sky is clear, and I love coding. We're writing Rust tonight boys. Awooooooo!"
@@ -4056,6 +4060,7 @@
       "dialogue": {
         "speaker": "Casey",
         "portrait": "casey",
+        "face_index": 0,
         "lines": [
           "If you know who I am I don't know why you're surprised to find me here."
         ]
@@ -4070,6 +4075,7 @@
       "dialogue": {
         "speaker": "Nanny Ogg Vorbis",
         "portrait": "People1",
+        "face_index": 6,
         "lines": [
           "nothin' over 'ere cept broken dreams and burnouts",
           "It's not that bad, I just haven't done anything with this part of the village yet :)"
@@ -4085,6 +4091,7 @@
       "dialogue": {
         "speaker": "Glenn Gary",
         "portrait": "Actor1",
+        "face_index": 4,
         "lines": [
           "How am I supposed to sell this product when it keeps crashing in front of prospects!?",
           "Inferno talks a big game but really their customers are stuck with us so they put up with it. Our reputation is not great.",
@@ -4103,6 +4110,7 @@
       "dialogue": {
         "speaker": "Agi Lecoach",
         "portrait": "Actor2",
+        "face_index": 3,
         "lines": [
           "I work with all the teams and it's unbelievable how different they are!",
           "The brass hangs out in Mahogany Row. They act like they're the adults in the room but they're just people.",
@@ -4121,6 +4129,7 @@
       "dialogue": {
         "speaker": "Paws Alljohn",
         "portrait": "Evil",
+        "face_index": 3,
         "lines": [
           "GAME OVER MAN!",
           "Haha not really. These folks have the best SREs and infrastructure money can buy, and they still have incidents!",
@@ -4137,6 +4146,7 @@
       "dialogue": {
         "speaker": "Johnny Mnemomena",
         "portrait": "SF_Monster",
+        "face_index": 4,
         "lines": [
           "I never sleep anymore. No matter how many times I train these fools, they keep writing bugs!",
           "Obviously this is proof that we need more training."
@@ -4152,6 +4162,7 @@
       "dialogue": {
         "speaker": "Frau Barella",
         "portrait": "People4",
+        "face_index": 7,
         "lines": [
           "The great style unification of 2021 is the greatest achievement of our career!",
           "Customers still complain about usability. It's like. Our stuff is great, but it doesn't quite come to gether."

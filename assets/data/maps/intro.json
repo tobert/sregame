@@ -681,6 +681,7 @@
       "dialogue": {
         "speaker": "Amy",
         "portrait": "Amy",
+        "face_index": 0,
         "lines": [
           "The Endgame of SRE",
           "Amy Tobey | @renice@hachyderm.io",

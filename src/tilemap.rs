@@ -295,6 +295,7 @@ fn spawn_map(
             NpcDialogue {
                 speaker: npc_data.dialogue.speaker.clone(),
                 portrait_path,
+                portrait_face_index: npc_data.dialogue.face_index,
                 lines: npc_data.dialogue.lines.clone(),
             },
             tracer.as_deref(),

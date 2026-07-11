@@ -24,8 +24,22 @@ impl Plugin for DialoguePlugin {
 pub struct StartDialogueEvent {
     pub speaker: String,
     pub portrait: Option<Handle<Image>>,
+    /// Which cell of `portrait`'s face sheet to crop and display - see
+    /// `NpcDialogue::portrait_face_index` in npc.rs.
+    pub portrait_face_index: u32,
     pub lines: Vec<String>,
 }
+
+/// RPGMaker MZ face sheets are always a 4-column x 2-row grid of 144x144px
+/// cells (`ImageManager.faceWidth`/`faceHeight` in rmmz_managers.js and
+/// `Window_Base.prototype.drawFace` in rmmz_windows.js are hardcoded to this
+/// regardless of a given sheet's actual pixel dimensions - some of ours are
+/// taller than 288px, e.g. assets/textures/portraits/casey.png, with the
+/// extra rows simply unused), so `faceIndex` 0-7 always maps into this one
+/// fixed grid across every portrait file.
+const FACE_SHEET_CELL_SIZE: UVec2 = UVec2::new(144, 144);
+const FACE_SHEET_COLUMNS: u32 = 4;
+const FACE_SHEET_ROWS: u32 = 2;
 
 #[derive(Component)]
 struct DialogueRoot;
@@ -68,15 +82,22 @@ impl TypewriterEffect {
 pub struct DialogueQueue {
     speaker: String,
     portrait: Option<Handle<Image>>,
+    portrait_face_index: u32,
     lines: Vec<String>,
     current_line: usize,
 }
 
 impl DialogueQueue {
-    fn new(speaker: String, portrait: Option<Handle<Image>>, lines: Vec<String>) -> Self {
+    fn new(
+        speaker: String,
+        portrait: Option<Handle<Image>>,
+        portrait_face_index: u32,
+        lines: Vec<String>,
+    ) -> Self {
         Self {
             speaker,
             portrait,
+            portrait_face_index,
             lines,
             current_line: 0,
         }
@@ -96,6 +117,7 @@ fn spawn_dialogue_ui(
     mut commands: Commands,
     game_assets: Res<GameAssets>,
     dialogue_queue: Option<Res<DialogueQueue>>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     info!("🎨 spawn_dialogue_ui called");
 
@@ -130,9 +152,44 @@ fn spawn_dialogue_ui(
             .and_then(|queue| queue.portrait.clone());
 
         if let Some(portrait) = portrait_handle {
+            // Face sheets are a grid of cells, not one portrait each (see
+            // FACE_SHEET_* docs above) - render only the NPC's own cell via
+            // a texture atlas, the same idiom npc.rs::spawn_npc already uses
+            // for character walk-sprite sheets.
+            let face_index = dialogue_queue
+                .as_ref()
+                .map(|queue| queue.portrait_face_index)
+                .unwrap_or(0) as usize;
+
+            #[cfg(debug_assertions)]
+            {
+                let max_index = (FACE_SHEET_COLUMNS * FACE_SHEET_ROWS - 1) as usize;
+                if face_index > max_index {
+                    error!(
+                        "❌ Portrait face_index {} exceeds face sheet grid bounds (max {})",
+                        face_index, max_index
+                    );
+                }
+            }
+
+            let layout = TextureAtlasLayout::from_grid(
+                FACE_SHEET_CELL_SIZE,
+                FACE_SHEET_COLUMNS,
+                FACE_SHEET_ROWS,
+                None,
+                None,
+            );
+            let atlas_layout = texture_atlas_layouts.add(layout);
+
             parent.spawn((
                 PortraitNode,
-                ImageNode::new(portrait),
+                ImageNode::from_atlas_image(
+                    portrait,
+                    TextureAtlas {
+                        layout: atlas_layout,
+                        index: face_index,
+                    },
+                ),
                 Node {
                     width: Val::Px(128.0),
                     height: Val::Px(128.0),
@@ -231,6 +288,7 @@ fn handle_dialogue_events(
         let queue = DialogueQueue::new(
             event.speaker.clone(),
             event.portrait.clone(),
+            event.portrait_face_index,
             event.lines.clone(),
         );
 

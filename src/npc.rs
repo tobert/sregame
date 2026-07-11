@@ -42,6 +42,10 @@ pub enum NpcFacing {
 pub struct NpcDialogue {
     pub speaker: String,
     pub portrait_path: String,
+    /// Which cell of the `portrait_path` face sheet to crop and display (see
+    /// `DialogueData::face_index` in map_data.rs and the atlas built in
+    /// `dialogue.rs::spawn_dialogue_ui`).
+    pub portrait_face_index: u32,
     pub lines: Vec<String>,
 }
 
@@ -222,6 +226,7 @@ fn handle_interaction_input(
         dialogue_events.write(StartDialogueEvent {
             speaker: dialogue.speaker.clone(),
             portrait: Some(portrait),
+            portrait_face_index: dialogue.portrait_face_index,
             lines: dialogue.lines.clone(),
         });
 
