@@ -67,3 +67,94 @@ fn check_map_exits(
         break;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::ecs::system::RunSystemOnce;
+    use crate::map_data::{ExitData, tile_to_world};
+
+    // Town of Endgame's real, converted exits (assets/data/maps/town_of_endgame.json)
+    // as of the Team Marathon Retro door fix - kept inline so this test fails
+    // loudly if a future re-conversion ever changes the real door's trigger
+    // tile or target without the test being updated to match.
+    fn town_of_endgame_exits() -> Vec<ExitData> {
+        vec![
+            ExitData { trigger_x: 8, trigger_y: 29, target_scene: "TeamMarathonRetro".into(), target_spawn_x: 12, target_spawn_y: 15 },
+            ExitData { trigger_x: 23, trigger_y: 20, target_scene: "TeamDisco".into(), target_spawn_x: 7, target_spawn_y: 13 },
+            ExitData { trigger_x: 6, trigger_y: 18, target_scene: "TeamInferno".into(), target_spawn_x: 11, target_spawn_y: 18 },
+            ExitData { trigger_x: 29, trigger_y: 13, target_scene: "MahoganyRow".into(), target_spawn_x: 16, target_spawn_y: 10 },
+        ]
+    }
+
+    fn setup_world(player_tile: (u32, u32), exits: Vec<ExitData>) -> World {
+        const WIDTH: u32 = 34;
+        const HEIGHT: u32 = 39;
+
+        let mut world = World::new();
+        world.init_resource::<NextState<Scene>>();
+        world.insert_resource(MapExits(exits));
+        world.insert_resource(CollisionMap::new(WIDTH, HEIGHT));
+
+        let world_pos = tile_to_world(player_tile.0, player_tile.1, WIDTH, HEIGHT);
+        world.spawn((Player, Transform::from_xyz(world_pos.x, world_pos.y, 1.0)));
+
+        world
+    }
+
+    #[test]
+    fn player_on_real_town_door_triggers_team_marathon_retro() {
+        // The one door in Town of Endgame that's actually themed "Team
+        // Marathon" transfers to the Retro map, not the base map - see the
+        // NOTE in tools/convert_maps.py. This test pins that behavior so a
+        // future change can't silently regress the door back to the wrong
+        // (unreachable-in-the-original) destination.
+        let mut world = setup_world((8, 29), town_of_endgame_exits());
+
+        world.run_system_once(check_map_exits).unwrap();
+
+        let next = world.resource::<NextState<Scene>>();
+        assert!(
+            matches!(next, NextState::Pending(Scene::TeamMarathonRetro)),
+            "expected a pending transition to TeamMarathonRetro, got {next:?}"
+        );
+
+        let arrival = world.resource::<PendingArrival>();
+        assert_eq!((arrival.spawn_x, arrival.spawn_y), (12, 15));
+    }
+
+    #[test]
+    fn player_off_any_exit_tile_triggers_nothing() {
+        let mut world = setup_world((0, 0), town_of_endgame_exits());
+
+        world.run_system_once(check_map_exits).unwrap();
+
+        assert!(matches!(world.resource::<NextState<Scene>>(), NextState::Unchanged));
+        assert!(world.get_resource::<PendingArrival>().is_none());
+    }
+
+    #[test]
+    fn each_town_door_targets_its_real_destination() {
+        // Covers all four real doors (not just the Retro one above) so a
+        // future edit to the exit table can't silently swap two targets.
+        let cases: &[((u32, u32), Scene, (u32, u32))] = &[
+            ((8, 29), Scene::TeamMarathonRetro, (12, 15)),
+            ((23, 20), Scene::TeamDisco, (7, 13)),
+            ((6, 18), Scene::TeamInferno, (11, 18)),
+            ((29, 13), Scene::MahoganyRow, (16, 10)),
+        ];
+
+        for &(trigger_tile, expected_scene, expected_spawn) in cases {
+            let mut world = setup_world(trigger_tile, town_of_endgame_exits());
+            world.run_system_once(check_map_exits).unwrap();
+
+            let next = world.resource::<NextState<Scene>>();
+            assert!(
+                matches!(next, NextState::Pending(scene) if *scene == expected_scene),
+                "tile {trigger_tile:?}: expected Pending({expected_scene:?}), got {next:?}"
+            );
+            let arrival = world.resource::<PendingArrival>();
+            assert_eq!((arrival.spawn_x, arrival.spawn_y), expected_spawn, "tile {trigger_tile:?}");
+        }
+    }
+}

@@ -8,7 +8,8 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), spawn_player)
+        app.register_type::<Player>()
+            .add_systems(OnEnter(GameState::Playing), spawn_player)
             .add_systems(Update, (
                 player_movement_input,
                 apply_movement,
@@ -17,7 +18,8 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 pub struct Player;
 
 #[derive(Component)]
