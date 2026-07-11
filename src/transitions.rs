@@ -87,16 +87,17 @@ mod tests {
         ]
     }
 
-    fn setup_world(player_tile: (u32, u32), exits: Vec<ExitData>) -> World {
-        const WIDTH: u32 = 34;
-        const HEIGHT: u32 = 39;
+    // Town of Endgame's own map dimensions (assets/data/maps/town_of_endgame.json).
+    const TOWN_WIDTH: u32 = 34;
+    const TOWN_HEIGHT: u32 = 39;
 
+    fn setup_world(player_tile: (u32, u32), exits: Vec<ExitData>, width: u32, height: u32) -> World {
         let mut world = World::new();
         world.init_resource::<NextState<Scene>>();
         world.insert_resource(MapExits(exits));
-        world.insert_resource(CollisionMap::new(WIDTH, HEIGHT));
+        world.insert_resource(CollisionMap::new(width, height));
 
-        let world_pos = tile_to_world(player_tile.0, player_tile.1, WIDTH, HEIGHT);
+        let world_pos = tile_to_world(player_tile.0, player_tile.1, width, height);
         world.spawn((Player, Transform::from_xyz(world_pos.x, world_pos.y, 1.0)));
 
         world
@@ -109,7 +110,7 @@ mod tests {
         // NOTE in tools/convert_maps.py. This test pins that behavior so a
         // future change can't silently regress the door back to the wrong
         // (unreachable-in-the-original) destination.
-        let mut world = setup_world((8, 29), town_of_endgame_exits());
+        let mut world = setup_world((8, 29), town_of_endgame_exits(), TOWN_WIDTH, TOWN_HEIGHT);
 
         world.run_system_once(check_map_exits).unwrap();
 
@@ -125,7 +126,7 @@ mod tests {
 
     #[test]
     fn player_off_any_exit_tile_triggers_nothing() {
-        let mut world = setup_world((0, 0), town_of_endgame_exits());
+        let mut world = setup_world((0, 0), town_of_endgame_exits(), TOWN_WIDTH, TOWN_HEIGHT);
 
         world.run_system_once(check_map_exits).unwrap();
 
@@ -184,7 +185,7 @@ mod tests {
         ];
 
         for &(trigger_tile, expected_scene, expected_spawn) in cases {
-            let mut world = setup_world(trigger_tile, town_of_endgame_exits());
+            let mut world = setup_world(trigger_tile, town_of_endgame_exits(), TOWN_WIDTH, TOWN_HEIGHT);
             world.run_system_once(check_map_exits).unwrap();
 
             let next = world.resource::<NextState<Scene>>();
@@ -194,6 +195,49 @@ mod tests {
             );
             let arrival = world.resource::<PendingArrival>();
             assert_eq!((arrival.spawn_x, arrival.spawn_y), expected_spawn, "tile {trigger_tile:?}");
+        }
+    }
+
+    #[test]
+    fn each_team_room_door_returns_to_town_of_endgame() {
+        // The single "To Town" door baked into each of these three
+        // interior maps (assets/data/maps/team_disco.json,
+        // team_inferno.json, mahogany_row.json), completing the round
+        // trip that `each_town_door_targets_its_real_destination` only
+        // covers in the Town -> room direction. Confirmed unconditional
+        // in the original RPGMaker data too: Map005/006/007.json's "To
+        // Town" event has exactly one page, with every one of its
+        // condition *Valid flags (switch1/switch2/variable/item/actor/
+        // selfSwitch) false - so there's no story-gate to encode here,
+        // unlike a conditional door would require.
+        //
+        // Each room's own width/height (not Town's) is required since
+        // world_to_tile's tile math is a function of the current map's
+        // dimensions.
+        let cases: &[(&str, (u32, u32), u32, u32, (u32, u32))] = &[
+            ("Team Disco", (7, 14), 15, 19, (23, 21)),
+            ("Team Inferno", (11, 19), 23, 24, (6, 19)),
+            ("Mahogany Row", (16, 11), 25, 19, (29, 14)),
+        ];
+
+        for &(label, trigger_tile, width, height, expected_spawn) in cases {
+            let exits = vec![ExitData {
+                trigger_x: trigger_tile.0,
+                trigger_y: trigger_tile.1,
+                target_scene: "TownOfEndgame".into(),
+                target_spawn_x: expected_spawn.0,
+                target_spawn_y: expected_spawn.1,
+            }];
+            let mut world = setup_world(trigger_tile, exits, width, height);
+            world.run_system_once(check_map_exits).unwrap();
+
+            let next = world.resource::<NextState<Scene>>();
+            assert!(
+                matches!(next, NextState::Pending(scene) if *scene == Scene::TownOfEndgame),
+                "{label} door at {trigger_tile:?}: expected Pending(TownOfEndgame), got {next:?}"
+            );
+            let arrival = world.resource::<PendingArrival>();
+            assert_eq!((arrival.spawn_x, arrival.spawn_y), expected_spawn, "{label} door at {trigger_tile:?}");
         }
     }
 }

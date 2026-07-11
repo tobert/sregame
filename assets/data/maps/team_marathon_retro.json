@@ -1603,13 +1603,13 @@
       }
     },
     {
-      "name": "Doctor Mcfire",
+      "name": "Doctor McFire",
       "x": 10,
       "y": 8,
       "sprite": "DrMcfire",
       "facing": "down",
       "dialogue": {
-        "speaker": "Doctor Mcfire",
+        "speaker": "Doctor McFire",
         "portrait": "DrMcfire",
         "lines": [
           "On-call is such a rush. One minute you're typing away and the next you're the incident commander.",
@@ -1722,13 +1722,13 @@
       }
     },
     {
-      "name": "Alls Johnpaw",
+      "name": "Amy",
       "x": 20,
       "y": 11,
       "sprite": "Evil",
       "facing": "left",
       "dialogue": {
-        "speaker": "Alls Johnpaw",
+        "speaker": "Amy",
         "portrait": "Amy",
         "lines": [
           "GAME OVER MAN!",

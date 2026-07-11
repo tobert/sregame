@@ -1699,13 +1699,13 @@
       }
     },
     {
-      "name": "New Guy",
+      "name": "Kirito",
       "x": 20,
       "y": 16,
       "sprite": "SF_Actor1",
       "facing": "left",
       "dialogue": {
-        "speaker": "New Guy",
+        "speaker": "Kirito",
         "portrait": "SF_Actor1",
         "lines": [
           "I started here months ago and it's like this isekai I watched where the guy has no powers and the starting town hates him.",
