@@ -197,34 +197,43 @@ fn apply_movement(
             continue;
         }
 
-        let delta_x = velocity.0.x * time.delta_secs();
-        let delta_y = velocity.0.y * time.delta_secs();
-        let new_x = transform.translation.x + delta_x;
-        let new_y = transform.translation.y + delta_y;
+        let delta = velocity.0 * time.delta_secs();
+        let mut position = transform.translation.truncate();
 
-        let mut blocked_tile = None;
-        let can_move = if let Some(collision_map) = &collision_map {
-            let (tile_x, tile_y) = crate::map_data::world_to_tile(
-                Vec2::new(new_x, new_y),
-                collision_map.width,
-                collision_map.height,
-            );
-
-            let walkable = collision_map.is_walkable(tile_x, tile_y);
-            if !walkable {
-                blocked_tile = Some((tile_x, tile_y));
+        // Each axis moves independently (RPGMaker has no diagonals; this
+        // also gives wall-sliding: a diagonal push along a wall keeps the
+        // free axis moving). Tile crossings go through can_step, which
+        // honors directional passability - a plain "is the target tile
+        // walkable" check can't represent one-way edges like the item
+        // shop's counter.
+        for axis_delta in [Vec2::new(delta.x, 0.0), Vec2::new(0.0, delta.y)] {
+            if axis_delta == Vec2::ZERO {
+                continue;
             }
-            walkable
-        } else {
-            true
-        };
+            let candidate = position + axis_delta;
 
-        if can_move {
-            transform.translation.x = new_x;
-            transform.translation.y = new_y;
-        } else if let Some((tile_x, tile_y)) = blocked_tile {
-            bumps.write(BumpedIntoTile { tile_x, tile_y });
+            let allowed = if let Some(collision_map) = &collision_map {
+                let from = crate::map_data::world_to_tile(
+                    position, collision_map.width, collision_map.height);
+                let to = crate::map_data::world_to_tile(
+                    candidate, collision_map.width, collision_map.height);
+
+                let ok = collision_map.can_step(from, to);
+                if !ok {
+                    bumps.write(BumpedIntoTile { tile_x: to.0, tile_y: to.1 });
+                }
+                ok
+            } else {
+                true
+            };
+
+            if allowed {
+                position = candidate;
+            }
         }
+
+        transform.translation.x = position.x;
+        transform.translation.y = position.y;
     }
 }
 

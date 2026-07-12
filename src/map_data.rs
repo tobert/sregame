@@ -28,9 +28,21 @@ pub struct MapData {
     /// tools/convert_maps.py. See CollisionMap in tilemap.rs. Defaults to
     /// empty for map JSON predating this field; an absent index then reads
     /// as blocked (fail closed) via `.unwrap_or(true)` in tilemap.rs, not
-    /// walkable.
+    /// walkable. Superseded by `passability` when present - kept as the
+    /// coarse fallback for older JSON.
     #[serde(default)]
     pub collision: Vec<bool>,
+    /// Per-cell 4-bit directional passability masks (row-major, same shape
+    /// as `tiles`), baked from RPGMaker's Game_Map.checkPassage semantics:
+    /// bit set = can move OUT of this cell in that direction. Bit values
+    /// match RPGMaker's flag nibble and tilemap.rs's PASS_* constants:
+    /// 1=down, 2=left, 4=right, 8=up (down = +y in RPGMaker orientation).
+    /// This is what represents shop counters, storefront edges, and wall
+    /// bands that are passable from some sides only. Defaults to empty for
+    /// map JSON predating this field (tilemap.rs then falls back to
+    /// `collision`).
+    #[serde(default)]
+    pub passability: Vec<u8>,
     pub npcs: Vec<NpcData>,
     #[serde(default)]
     pub exits: Vec<ExitData>,
@@ -84,6 +96,18 @@ pub struct DoorData {
     pub frame_height: u32,
 }
 
+/// How an exit fires. RPGMaker trigger 0 = Action Button (stand on the
+/// event and press confirm); triggers 1/2 fire on contact. Flattening
+/// action events into touch exits made Map009's "retro dialog" event (by
+/// the inn table) warp unsuspecting players straight to the End scene.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ExitTrigger {
+    #[default]
+    Touch,
+    Action,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct ExitData {
     pub trigger_x: u32,
@@ -92,6 +116,9 @@ pub struct ExitData {
     pub target_scene: String,
     pub target_spawn_x: u32,
     pub target_spawn_y: u32,
+    /// Defaults to Touch for map JSON predating this field.
+    #[serde(default)]
+    pub trigger: ExitTrigger,
 }
 
 #[derive(Debug, Deserialize)]
@@ -394,6 +421,35 @@ mod tests {
         }
 
         assert!(missing.is_empty(), "missing NPC art assets:\n{}", missing.join("\n"));
+    }
+
+    #[test]
+    fn shipped_town_passability_carries_directional_cells() {
+        // Pins the passability pipeline end to end against the real
+        // converted data: town (23,2) is a storefront edge that RPGMaker
+        // marks passable down+right only (mask 0b0101). If a future
+        // re-conversion drops or reorders the masks, this fails loudly.
+        let map = MapData::load("town_of_endgame").expect("shipped town should load");
+        assert_eq!(
+            map.passability.len(),
+            (map.width * map.height) as usize,
+            "passability must cover every cell"
+        );
+        let idx = (2 * map.width + 23) as usize;
+        assert_eq!(map.passability[idx], 0b0101, "town (23,2) should be down|right one-way");
+    }
+
+    #[test]
+    fn exit_trigger_deserializes_and_defaults_to_touch() {
+        let json = r#"{ "trigger_x": 1, "trigger_y": 2, "target_scene": "End",
+                        "target_spawn_x": 3, "target_spawn_y": 4, "trigger": "action" }"#;
+        let exit: ExitData = serde_json::from_str(json).expect("action exit should parse");
+        assert_eq!(exit.trigger, ExitTrigger::Action);
+
+        let json_old = r#"{ "trigger_x": 1, "trigger_y": 2, "target_scene": "End",
+                            "target_spawn_x": 3, "target_spawn_y": 4 }"#;
+        let exit_old: ExitData = serde_json::from_str(json_old).expect("old exit JSON should parse");
+        assert_eq!(exit_old.trigger, ExitTrigger::Touch);
     }
 
     #[test]

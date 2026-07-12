@@ -42,11 +42,22 @@ pub enum TileCollision {
     Blocked,
 }
 
+/// Directional passability bits, matching both RPGMaker's flag nibble and
+/// the `passability` masks baked by tools/convert_maps.py. A set bit means
+/// "can move OUT of this cell in that direction". "Down" is +y in RPGMaker
+/// orientation (toward the bottom of the map).
+pub const PASS_DOWN: u8 = 0x01;
+pub const PASS_LEFT: u8 = 0x02;
+pub const PASS_RIGHT: u8 = 0x04;
+pub const PASS_UP: u8 = 0x08;
+pub const PASS_ALL: u8 = 0x0F;
+
 #[derive(Resource)]
 pub struct CollisionMap {
     pub width: u32,
     pub height: u32,
-    pub tiles: Vec<TileCollision>,
+    /// Per-cell 4-bit masks, RPGMaker orientation (row 0 = top).
+    passability: Vec<u8>,
 }
 
 impl CollisionMap {
@@ -54,23 +65,73 @@ impl CollisionMap {
         Self {
             width,
             height,
-            tiles: vec![TileCollision::Walkable; (width * height) as usize],
+            passability: vec![PASS_ALL; (width * height) as usize],
         }
+    }
+
+    pub fn from_passability(width: u32, height: u32, passability: Vec<u8>) -> Self {
+        assert_eq!(
+            passability.len(),
+            (width * height) as usize,
+            "passability data doesn't match map dimensions"
+        );
+        Self { width, height, passability }
     }
 
     pub fn set_tile(&mut self, x: u32, y: u32, collision: TileCollision) {
         if x < self.width && y < self.height {
             let index = (y * self.width + x) as usize;
-            self.tiles[index] = collision;
+            self.passability[index] = match collision {
+                TileCollision::Walkable => PASS_ALL,
+                TileCollision::Blocked => 0,
+            };
         }
     }
 
-    pub fn is_walkable(&self, x: i32, y: i32) -> bool {
+    fn mask(&self, x: i32, y: i32) -> Option<u8> {
         if x < 0 || y < 0 || x >= self.width as i32 || y >= self.height as i32 {
-            return false;
+            return None;
         }
-        let index = (y as u32 * self.width + x as u32) as usize;
-        self.tiles.get(index) == Some(&TileCollision::Walkable)
+        self.passability
+            .get((y as u32 * self.width + x as u32) as usize)
+            .copied()
+    }
+
+    /// "Could the player stand here at all" - true if the cell is enterable
+    /// from at least one direction. Prefer `can_step` for movement.
+    pub fn is_walkable(&self, x: i32, y: i32) -> bool {
+        self.mask(x, y).is_some_and(|m| m != 0)
+    }
+
+    /// Test-only direct mask access; production masks come from the baked
+    /// map JSON via `from_passability`.
+    #[cfg(test)]
+    pub fn passability_for_tests(&mut self, x: u32, y: u32, mask: u8) {
+        let index = (y * self.width + x) as usize;
+        self.passability[index] = mask;
+    }
+
+    /// RPGMaker's Game_CharacterBase.canPass for one axis-aligned tile
+    /// step: the source cell's exit edge AND the destination cell's entry
+    /// edge must both be open. This is what makes one-way tiles work -
+    /// shop counters and wall bands are enterable from some sides only,
+    /// which no single per-cell boolean can express. Non-adjacent or
+    /// diagonal steps fail closed (movement is applied per axis).
+    pub fn can_step(&self, from: (i32, i32), to: (i32, i32)) -> bool {
+        if from == to {
+            return true;
+        }
+        let (exit_bit, entry_bit) = match (to.0 - from.0, to.1 - from.1) {
+            (0, 1) => (PASS_DOWN, PASS_UP),
+            (0, -1) => (PASS_UP, PASS_DOWN),
+            (-1, 0) => (PASS_LEFT, PASS_RIGHT),
+            (1, 0) => (PASS_RIGHT, PASS_LEFT),
+            _ => return false,
+        };
+        let (Some(from_mask), Some(to_mask)) = (self.mask(from.0, from.1), self.mask(to.0, to.1)) else {
+            return false;
+        };
+        from_mask & exit_bit != 0 && to_mask & entry_bit != 0
     }
 }
 
@@ -252,16 +313,29 @@ fn spawn_map(
 
     // CollisionMap stays in RPGMaker orientation (y=0 = top row, same as the
     // JSON), because every lookup goes through world_to_tile, which returns
-    // RPGMaker-orientation coordinates.
-    let mut collision_map = CollisionMap::new(map.width, map.height);
-    for y in 0..map.height {
-        for x in 0..map.width {
-            let index = (y * map.width + x) as usize;
-            if map.collision.get(index).copied().unwrap_or(true) {
-                collision_map.set_tile(x, y, TileCollision::Blocked);
+    // RPGMaker-orientation coordinates. Directional masks when the JSON has
+    // them; coarse blocked/walkable fallback for older JSON.
+    let cell_count = (map.width * map.height) as usize;
+    let mut collision_map = if map.passability.len() == cell_count {
+        CollisionMap::from_passability(map.width, map.height, map.passability.clone())
+    } else {
+        if !map.passability.is_empty() {
+            warn!(
+                "Map '{}' passability has {} cells, expected {} - falling back to collision",
+                map.name, map.passability.len(), cell_count
+            );
+        }
+        let mut fallback = CollisionMap::new(map.width, map.height);
+        for y in 0..map.height {
+            for x in 0..map.width {
+                let index = (y * map.width + x) as usize;
+                if map.collision.get(index).copied().unwrap_or(true) {
+                    fallback.set_tile(x, y, TileCollision::Blocked);
+                }
             }
         }
-    }
+        fallback
+    };
     // Blocking props (The Boss's Truck): RPGMaker events with priority
     // "same as characters" and through=false are impassable, and the
     // tile-flag bake can't know about events.
@@ -443,4 +517,51 @@ fn despawn_map(
     commands.remove_resource::<CollisionMap>();
     commands.remove_resource::<MapExits>();
     info!("Map despawned");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn can_step_respects_one_way_edges() {
+        // A "shop counter" cell: enterable/exitable down, left, right - but
+        // not up. Approaching from the south moving north is what the item
+        // shop's counter blocks in the original.
+        let mut map = CollisionMap::new(3, 3);
+        // center cell (1,1) = counter with mask down|left|right
+        map.passability_for_tests(1, 1, PASS_DOWN | PASS_LEFT | PASS_RIGHT);
+
+        // From below (1,2) moving up: exit up of floor is open, but entry
+        // means the counter's DOWN edge... which is open - RPGMaker lets
+        // you step ONTO such a cell from below; what it forbids is leaving
+        // upward. Verify the exact engine semantics:
+        assert!(map.can_step((1, 2), (1, 1)), "stepping onto the counter from below is legal");
+        assert!(!map.can_step((1, 1), (1, 0)), "leaving the counter upward is not");
+
+        // A one-way 'dr' storefront edge (town (23,2)): enterable from
+        // below/right, NOT from the left.
+        let mut town = CollisionMap::new(3, 3);
+        town.passability_for_tests(1, 1, PASS_DOWN | PASS_RIGHT);
+        assert!(!town.can_step((0, 1), (1, 1)), "entering a 'dr' cell moving right must fail (its left edge is closed)");
+        assert!(town.can_step((1, 2), (1, 1)), "entering the same cell from below is fine");
+    }
+
+    #[test]
+    fn can_step_fails_closed_at_map_edges_and_diagonals() {
+        let map = CollisionMap::new(2, 2);
+        assert!(!map.can_step((0, 0), (-1, 0)), "off-map is never passable");
+        assert!(!map.can_step((0, 0), (1, 1)), "diagonal steps fail closed");
+        assert!(map.can_step((0, 0), (0, 0)), "staying put is always fine");
+    }
+
+    #[test]
+    fn set_tile_blocked_closes_every_edge() {
+        let mut map = CollisionMap::new(2, 1);
+        map.set_tile(1, 0, TileCollision::Blocked);
+        assert!(!map.can_step((0, 0), (1, 0)));
+        assert!(!map.is_walkable(1, 0));
+        map.set_tile(1, 0, TileCollision::Walkable);
+        assert!(map.can_step((0, 0), (1, 0)));
+    }
 }

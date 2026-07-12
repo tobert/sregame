@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use crate::game_state::{Mode, Scene};
-use crate::map_data::{scene_from_str, world_to_tile};
+use crate::map_data::{scene_from_str, world_to_tile, ExitTrigger};
 use crate::player::Player;
 use crate::tilemap::{CollisionMap, MapExits, PendingArrival};
 
@@ -103,6 +103,7 @@ fn check_map_exits(
     doors: Query<(Entity, &Door)>,
     departing: Option<Res<DepartingDoor>>,
     mut bumps: MessageReader<crate::player::BumpedIntoTile>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     mut next_scene: ResMut<NextState<Scene>>,
 ) {
     // A departure is already in flight - don't re-trigger. Still drain the
@@ -130,19 +131,29 @@ fn check_map_exits(
         collision_map.height,
     );
 
-    // An exit fires when the player stands on its tile (walkable exit mats:
-    // the interior "To Town" tiles) OR bumps into it (RPGMaker Player-Touch
-    // on impassable door tiles - the town doors are collision-blocked, so
-    // standing on them is impossible).
-    let mut candidate_tiles: Vec<(i32, i32)> = vec![(tile_x, tile_y)];
+    // A touch exit fires when the player stands on its tile (walkable exit
+    // mats: the interior "To Town" tiles) OR bumps into it (RPGMaker
+    // Player-Touch on impassable door tiles - the town doors are
+    // collision-blocked, so standing on them is impossible). An ACTION
+    // exit only fires when the player stands on it and presses E - the
+    // inn's "retro dialog" event is one, and treating it as touch warped
+    // players to the End scene for walking near the table.
+    let mut touched_tiles: Vec<(i32, i32)> = vec![(tile_x, tile_y)];
     for bump in bumps.read() {
-        candidate_tiles.push((bump.tile_x, bump.tile_y));
+        touched_tiles.push((bump.tile_x, bump.tile_y));
     }
 
     for exit in &map_exits.0 {
-        let hit = candidate_tiles
-            .iter()
-            .any(|&(cx, cy)| exit.trigger_x as i32 == cx && exit.trigger_y as i32 == cy);
+        let hit = match exit.trigger {
+            ExitTrigger::Touch => touched_tiles
+                .iter()
+                .any(|&(cx, cy)| exit.trigger_x as i32 == cx && exit.trigger_y as i32 == cy),
+            ExitTrigger::Action => {
+                keyboard.just_pressed(KeyCode::KeyE)
+                    && exit.trigger_x as i32 == tile_x
+                    && exit.trigger_y as i32 == tile_y
+            }
+        };
         if !hit {
             continue;
         }
@@ -199,10 +210,10 @@ mod tests {
     // tile or target without the test being updated to match.
     fn town_of_endgame_exits() -> Vec<ExitData> {
         vec![
-            ExitData { trigger_x: 8, trigger_y: 29, target_scene: "TeamMarathonRetro".into(), target_spawn_x: 12, target_spawn_y: 15 },
-            ExitData { trigger_x: 23, trigger_y: 20, target_scene: "TeamDisco".into(), target_spawn_x: 7, target_spawn_y: 13 },
-            ExitData { trigger_x: 6, trigger_y: 18, target_scene: "TeamInferno".into(), target_spawn_x: 11, target_spawn_y: 18 },
-            ExitData { trigger_x: 29, trigger_y: 13, target_scene: "MahoganyRow".into(), target_spawn_x: 16, target_spawn_y: 10 },
+            ExitData { trigger_x: 8, trigger_y: 29, target_scene: "TeamMarathonRetro".into(), target_spawn_x: 12, target_spawn_y: 15, trigger: ExitTrigger::Touch },
+            ExitData { trigger_x: 23, trigger_y: 20, target_scene: "TeamDisco".into(), target_spawn_x: 7, target_spawn_y: 13, trigger: ExitTrigger::Touch },
+            ExitData { trigger_x: 6, trigger_y: 18, target_scene: "TeamInferno".into(), target_spawn_x: 11, target_spawn_y: 18, trigger: ExitTrigger::Touch },
+            ExitData { trigger_x: 29, trigger_y: 13, target_scene: "MahoganyRow".into(), target_spawn_x: 16, target_spawn_y: 10, trigger: ExitTrigger::Touch },
         ]
     }
 
@@ -214,6 +225,7 @@ mod tests {
         let mut world = World::new();
         world.init_resource::<NextState<Scene>>();
         world.init_resource::<Messages<crate::player::BumpedIntoTile>>();
+        world.init_resource::<ButtonInput<KeyCode>>();
         world.insert_resource(MapExits(exits));
         world.insert_resource(CollisionMap::new(width, height));
 
@@ -252,6 +264,44 @@ mod tests {
 
         assert!(matches!(world.resource::<NextState<Scene>>(), NextState::Unchanged));
         assert!(world.get_resource::<PendingArrival>().is_none());
+    }
+
+    // The inn's real action exit (assets/data/maps/team_marathon_retro.json):
+    // the "retro dialog" event by the table. Regression tests for the warp
+    // mine where walking near the table teleported the player to End.
+    fn retro_action_exit() -> Vec<ExitData> {
+        vec![
+            ExitData { trigger_x: 12, trigger_y: 12, target_scene: "End".into(), target_spawn_x: 8, target_spawn_y: 5, trigger: ExitTrigger::Action },
+        ]
+    }
+
+    #[test]
+    fn action_exit_does_not_fire_on_touch() {
+        // Standing right on the action tile without pressing E must do
+        // nothing - this is the "walk near the inn table, get warped to
+        // the goodbye scene" bug.
+        let mut world = setup_world((12, 12), retro_action_exit(), 24, 21);
+
+        world.run_system_once(check_map_exits).unwrap();
+
+        assert!(matches!(world.resource::<NextState<Scene>>(), NextState::Unchanged));
+        assert!(world.get_resource::<PendingArrival>().is_none());
+    }
+
+    #[test]
+    fn action_exit_fires_on_e_press_while_standing_on_it() {
+        let mut world = setup_world((12, 12), retro_action_exit(), 24, 21);
+        world
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::KeyE);
+
+        world.run_system_once(check_map_exits).unwrap();
+
+        let next = world.resource::<NextState<Scene>>();
+        assert!(
+            matches!(next, NextState::Pending(Scene::End)),
+            "E on the action tile should transfer, got {next:?}"
+        );
     }
 
     #[test]
@@ -321,7 +371,7 @@ mod tests {
     // door out of the game's opening scene, back to Town of Endgame.
     fn intro_exits() -> Vec<ExitData> {
         vec![
-            ExitData { trigger_x: 8, trigger_y: 1, target_scene: "TownOfEndgame".into(), target_spawn_x: 16, target_spawn_y: 23 },
+            ExitData { trigger_x: 8, trigger_y: 1, target_scene: "TownOfEndgame".into(), target_spawn_x: 16, target_spawn_y: 23, trigger: ExitTrigger::Touch },
         ]
     }
 
@@ -340,6 +390,7 @@ mod tests {
         let mut world = World::new();
         world.init_resource::<NextState<Scene>>();
         world.init_resource::<Messages<crate::player::BumpedIntoTile>>();
+        world.init_resource::<ButtonInput<KeyCode>>();
         world.insert_resource(MapExits(intro_exits()));
         world.insert_resource(CollisionMap::new(WIDTH, HEIGHT));
         let world_pos = tile_to_world(8, 1, WIDTH, HEIGHT);
@@ -411,6 +462,7 @@ mod tests {
                 target_scene: "TownOfEndgame".into(),
                 target_spawn_x: expected_spawn.0,
                 target_spawn_y: expected_spawn.1,
+                trigger: ExitTrigger::Touch,
             }];
             let mut world = setup_world(trigger_tile, exits, width, height);
             world.run_system_once(check_map_exits).unwrap();

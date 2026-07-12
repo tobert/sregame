@@ -22,7 +22,6 @@ from PIL import Image
 from rpgmaker_tiles import (
     TILE_SIZE,
     apply_shadow,
-    is_fully_blocked,
     is_higher_tile,
     is_shadowing_tile,
     is_table_tile,
@@ -361,6 +360,12 @@ def extract_exits_from_events(events):
                     "target_scene": target_scene,
                     "target_spawn_x": target_x,
                     "target_spawn_y": target_y,
+                    # RPGMaker trigger 0 = Action Button (player must press
+                    # confirm while on/at the event); 1/2 = touch. Flattening
+                    # everything to touch turned Map009's "retro dialog"
+                    # event (action-triggered, next to the inn table) into a
+                    # warp mine that teleported passers-by to the End scene.
+                    "trigger": "action" if page['trigger'] == 0 else "touch",
                 })
 
     return exits
@@ -585,6 +590,30 @@ def convert_tiles_and_collision(rpg_data, tileset_entry, compositor):
     tiles = [0] * num_cells
     upper_tiles = [0] * num_cells
     collision = [False] * num_cells
+    passability = [0] * num_cells
+
+    # Direction bits, identical values to RPGMaker's flag nibble and to
+    # tilemap.rs's PASS_* constants: 1=down, 2=left, 4=right, 8=up.
+    direction_bits = (0x01, 0x02, 0x04, 0x08)
+
+    def check_passage(x, y, bit):
+        """Game_Map.checkPassage (rmmz_objects.js): scan this cell's tile
+        layers TOP-DOWN; the first layer that isn't a star (0x10) tile
+        decides - passable if the direction bit is clear, impassable if
+        set. This replaces an earlier any-layer-fully-blocked heuristic
+        (plus a forced-solid border ring) that couldn't represent
+        directional tiles at all: shop counters, storefront edges, and
+        interior wall bands are all "passable from some sides only",
+        which the heuristic silently treated as fully walkable."""
+        for z in (3, 2, 1, 0):
+            flag = flags[get_map_plane(data, width, height, z, x, y)]
+            if flag & 0x10:
+                continue
+            if (flag & bit) == 0:
+                return True
+            if (flag & bit) == bit:
+                return False
+        return False
 
     for y in range(height):
         for x in range(width):
@@ -602,35 +631,23 @@ def convert_tiles_and_collision(rpg_data, tileset_entry, compositor):
             tiles[index] = ground_index
             upper_tiles[index] = upper_index
 
-            # Flag-based collision: blocked if any of this cell's 4
-            # tile-graphic layers is impassable from all 4 directions.
-            #
-            # This is deliberately OR'd with "cell sits on the map's outer
-            # edge", because we found (empirically, on Town of Endgame's
-            # left/right border) that RPGMaker map borders are sometimes
-            # drawn using *directional* passage flags rather than the
-            # full 0x0F (e.g. tile 6872, the left-column wall, has flags
-            # 0x0e04 -- only its right-facing edge is marked impassable,
-            # which is sufficient in the real engine's per-direction
-            # movement check but invisible to our simpler "fully blocked"
-            # heuristic). Directional passability is explicitly out of
-            # scope, so instead of implementing it we just guarantee the
-            # map's outer ring is always solid, which matches every map
-            # we've inspected and is a strict improvement over silently
-            # letting the player walk into/along border wall graphics.
-            collision[index] = (
-                any(
-                    is_fully_blocked(flags, tile_id)
-                    for tile_id in (tile_id0, tile_id1, tile_id2, tile_id3)
-                )
-                or x == 0 or x == width - 1 or y == 0 or y == height - 1
-            )
+            mask = 0
+            for bit in direction_bits:
+                if check_passage(x, y, bit):
+                    mask |= bit
+            passability[index] = mask
+            # Back-compat projection for map JSON consumers that predate
+            # passability: fully blocked = not passable in any direction.
+            # No border hack needed anymore: border walls block via their
+            # directional flags exactly as the real engine intends, and
+            # out-of-map moves fail in the runtime regardless.
+            collision[index] = mask == 0
 
     stats = {
         "blocked_cells": sum(collision),
         "upper_cells": sum(1 for v in upper_tiles if v != 0),
     }
-    return tiles, upper_tiles, collision, stats
+    return tiles, upper_tiles, collision, passability, stats
 
 
 # ---------------------------------------------------------------------------
@@ -655,7 +672,7 @@ def convert_map(rpgmaker_map_path, output_path, tileset_entry, compositor):
     height = rpg_data['height']
     tileset_id = rpg_data['tilesetId']
 
-    tiles, upper_tiles, collision, stats = convert_tiles_and_collision(
+    tiles, upper_tiles, collision, passability, stats = convert_tiles_and_collision(
         rpg_data, tileset_entry, compositor
     )
 
@@ -671,6 +688,7 @@ def convert_map(rpgmaker_map_path, output_path, tileset_entry, compositor):
         "tiles": tiles,
         "upper_tiles": upper_tiles,
         "collision": collision,
+        "passability": passability,
         "npcs": npcs,
         "exits": exits,
         "doors": doors,
