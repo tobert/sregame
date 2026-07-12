@@ -21,7 +21,7 @@ This version is written in Rust using the Bevy 0.17 game engine.
   - bevy_ecs_tilemap (tilemap rendering)
   - anyhow (error handling)
   - serde/serde_json (data serialization)
-- **Version Control**: Jujutsu (jj) with GitHub integration
+- **Version Control**: Git with GitHub
 
 ## High Level Game Features
 

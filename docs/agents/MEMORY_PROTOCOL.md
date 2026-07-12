@@ -10,8 +10,8 @@ This memory system provides **<2000 tokens** of persistent context that survives
 - Context window resets
 - Days, weeks, or months between work sessions
 
-Combined with **Jujutsu (jj)** version control, you have two layers of memory:
-1. **Code-level memory** (jj descriptions): Why changes were made
+Combined with **Git**, you have two layers of memory:
+1. **Code-level memory** (commit messages): Why changes were made
 2. **Project-level memory** (docs/agents/): What's happening now
 
 ## 📁 The Four Memory Files
@@ -105,17 +105,17 @@ You're reading it now. Only update if you discover better ways to use the system
 
 ### Starting a Session
 ```bash
-# 1. Load jj context (code memory)
-jj log -n 10
-jj show @
+# 1. Load git context (code memory)
+git log --oneline -10
+git show HEAD
 
 # 2. Load agent memory (project memory)
 # Read NOW.md - what's the current state?
 # Skim CONTEXT.md - refresh key facts
 # Browse PATTERNS.md - remember solutions
 
-# 3. Create new jj change
-jj new -m "feat: what you're about to do"
+# 3. Start a topic branch for the work
+git switch -c feat-what-you-are-about-to-do
 
 # 4. Update NOW.md
 # Set your active task
@@ -124,8 +124,9 @@ jj new -m "feat: what you're about to do"
 
 ### During Work
 ```bash
-# As you learn:
-jj describe    # Update with new insights
+# Commit early and often; refine the message as you learn:
+git commit
+git commit --amend    # Update with new insights (unpushed commits only)
 
 # When you solve something interesting:
 # Add pattern to PATTERNS.md
@@ -141,8 +142,8 @@ jj describe    # Update with new insights
 # PATTERNS.md: New solutions discovered
 # CONTEXT.md: If major changes occurred
 
-# 2. Finalize jj description
-jj describe -m "feat: what you built - why
+# 2. Finalize the commit message
+git commit -m "feat: what you built - why
 
 Why: [problem]
 Approach: [solution]
@@ -152,7 +153,7 @@ Next: [specific next action]
 🤖 YourModel <email>"
 
 # 3. Persist to GitHub
-jj git push -c @
+git push -u origin HEAD
 
 # 4. Verify
 cargo check && cargo test
@@ -173,15 +174,15 @@ Context:
 - Created AnimationState component with 4 directions
 Next: Add idle animations when player velocity is zero
 
-# In jj description
+# In the commit message
 Status: complete
 Next: Implement idle animations (see AnimationState TODO)
 ```
 
 **Gemini's entry:**
 ```bash
-jj log -n 10              # See Claude's work
-jj show <claude-change>   # Read full description
+git log --oneline -10     # See Claude's work
+git show <claude-commit>  # Read full message + diff
 cat docs/agents/NOW.md    # Get current state
 
 # Now Gemini knows:
@@ -262,20 +263,20 @@ You're using the system well when:
 ❌ **Vague descriptions** - "Fixed stuff" tells next agent nothing
 ❌ **Write-only memory** - Never reading before starting work
 ❌ **Pattern hoarding** - Solved something cool? Document it!
-❌ **Ignoring jj** - Memory system + jj = complete context
+❌ **Ignoring git history** - Memory system + git log = complete context
 
-## 🔗 Integration with Jujutsu
+## 🔗 Integration with Git
 
 **Memory files** (docs/agents/) answer: *What's happening now?*
-**jj descriptions** answer: *Why did we do this?*
+**Commit messages** answer: *Why did we do this?*
 
 Together they create complete context:
 ```
 NOW.md: "Implementing portal system between maps"
   ↓
-jj log: Shows sequence of changes
+git log: Shows sequence of changes
   ↓
-jj show <change>: "feat: portal collision detection - connects scenes
+git show <commit>: "feat: portal collision detection - connects scenes
 
 Why: Need map transitions for Town → Team Marathon
 Approach: Portal component with target scene + spawn point
@@ -290,7 +291,7 @@ PATTERNS.md: Documents portal pattern for reuse
 1. Read `CLAUDE.md` (project guidelines)
 2. Read `CONTEXT.md` (fast onboarding)
 3. Read `NOW.md` (current state)
-4. Run `jj log -n 10` (recent work)
+4. Run `git log --oneline -10` (recent work)
 5. Browse `PATTERNS.md` (available solutions)
 6. Start coding with full context!
 

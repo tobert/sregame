@@ -2,6 +2,11 @@
 
 **Last Updated**: 2025-11-17 by Claude
 
+> ⚠️ **Stale**: this snapshot predates the content-parity work (all 10 maps,
+> portals, walk animations, portrait/orientation/sprite-slot fixes — see
+> `git log` on the `content-parity` branch). Read git history for current
+> state; treat everything below as historical.
+
 ## 🎯 Active Work
 
 ✅ **TRUE Headless Mode CONFIRMED!** The existing `--headless` flag with `primary_window: None` is the CORRECT Bevy 0.17 solution. No Weston needed - pure CPU execution with BRP + OTLP working perfectly.
@@ -96,10 +101,10 @@ game_session (player entity)
 - src/instrumentation.rs: Accept endpoint parameter
 - examples/test_logging.rs: Require env var with helpful error
 
-**JJ Commits:**
-- `sunxwppr 676d91e3`: Opt-in telemetry with CLI flag/env var + MCP stable port
-- `sunxwppr 3ba0800f`: Updated otel-plan.md with Phase 5 priorities
-- `lqtlqyrz a0c2ed32`: OpenTelemetry OTLP logging integration (main)
+**Commits:**
+- `676d91e3`: Opt-in telemetry with CLI flag/env var + MCP stable port
+- `3ba0800f`: Updated otel-plan.md with Phase 5 priorities
+- `a0c2ed32`: OpenTelemetry OTLP logging integration (main)
 
 ## 🤔 Open Questions
 
