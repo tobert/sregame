@@ -1527,6 +1527,7 @@
       "y": 14,
       "sprite": "Monster",
       "sprite_index": 2,
+      "step_anime": true,
       "facing": "right",
       "dialogue": {
         "speaker": "Courage",
@@ -1544,6 +1545,7 @@
       "y": 9,
       "sprite": "People4",
       "sprite_index": 0,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Ocean",
@@ -1562,6 +1564,7 @@
       "y": 8,
       "sprite": "Nature",
       "sprite_index": 4,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Nyaanager Evie",
@@ -1580,6 +1583,7 @@
       "y": 13,
       "sprite": "People2",
       "sprite_index": 5,
+      "step_anime": true,
       "facing": "left",
       "dialogue": {
         "speaker": "Seventh Daughter of Nine",
@@ -1597,6 +1601,7 @@
       "y": 14,
       "sprite": "People2",
       "sprite_index": 1,
+      "step_anime": true,
       "facing": "left",
       "dialogue": {
         "speaker": "Luna",
@@ -1614,6 +1619,7 @@
       "y": 5,
       "sprite": "DrMcfire",
       "sprite_index": 0,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Doctor McFire",
@@ -1632,6 +1638,7 @@
       "y": 13,
       "sprite": "People3",
       "sprite_index": 6,
+      "step_anime": true,
       "facing": "right",
       "dialogue": {
         "speaker": "Hidaslo Xela",
@@ -1649,6 +1656,7 @@
       "y": 14,
       "sprite": "Mando",
       "sprite_index": 0,
+      "step_anime": false,
       "facing": "down",
       "dialogue": {
         "speaker": "Boba Jacobian",
@@ -1675,5 +1683,6 @@
       "target_spawn_x": 8,
       "target_spawn_y": 5
     }
-  ]
+  ],
+  "doors": []
 }

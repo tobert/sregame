@@ -870,6 +870,7 @@
       "y": 11,
       "sprite": "People1",
       "sprite_index": 3,
+      "step_anime": true,
       "facing": "right",
       "dialogue": {
         "speaker": "Polly Math",
@@ -888,6 +889,7 @@
       "y": 5,
       "sprite": "People1",
       "sprite_index": 4,
+      "step_anime": true,
       "facing": "left",
       "dialogue": {
         "speaker": "Cody",
@@ -904,6 +906,7 @@
       "y": 11,
       "sprite": "People1",
       "sprite_index": 5,
+      "step_anime": true,
       "facing": "left",
       "dialogue": {
         "speaker": "Devo Pestorius",
@@ -921,6 +924,7 @@
       "y": 5,
       "sprite": "Isabella",
       "sprite_index": 0,
+      "step_anime": true,
       "facing": "right",
       "dialogue": {
         "speaker": "Isabella",
@@ -938,6 +942,7 @@
       "y": 12,
       "sprite": "Greg",
       "sprite_index": 0,
+      "step_anime": false,
       "facing": "down",
       "dialogue": {
         "speaker": "Managear Greg",
@@ -954,6 +959,7 @@
       "y": 6,
       "sprite": "People2",
       "sprite_index": 4,
+      "step_anime": true,
       "facing": "left",
       "dialogue": {
         "speaker": "Dom",
@@ -974,5 +980,6 @@
       "target_spawn_x": 23,
       "target_spawn_y": 21
     }
-  ]
+  ],
+  "doors": []
 }

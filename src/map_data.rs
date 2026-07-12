@@ -34,6 +34,28 @@ pub struct MapData {
     pub npcs: Vec<NpcData>,
     #[serde(default)]
     pub exits: Vec<ExitData>,
+    /// Visible door sprites sitting on exit trigger tiles (the town's
+    /// `!doors` events). Purely visual - the exit logic itself lives in
+    /// `exits`. Defaults to empty for map JSON predating this field.
+    #[serde(default)]
+    pub doors: Vec<DoorData>,
+}
+
+/// One door sprite. `frame_width`/`frame_height` are baked by
+/// tools/convert_maps.py from the sheet's dimensions (RPGMaker frames are
+/// sheet_width/12 x sheet_height/8; doors.png is 576x768, so door frames
+/// are 48x96 - one tile wide, two tiles tall). `facing` is the resting
+/// animation row ("down" = closed); `pattern` the resting column.
+#[derive(Debug, Clone, Deserialize)]
+pub struct DoorData {
+    pub x: u32,
+    pub y: u32,
+    pub sprite: String,
+    pub sprite_index: u32,
+    pub facing: String,
+    pub pattern: u32,
+    pub frame_width: u32,
+    pub frame_height: u32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -58,6 +80,11 @@ pub struct NpcData {
     /// for map JSON predating this field.
     #[serde(default)]
     pub sprite_index: u32,
+    /// RPGMaker's "Stepping Animation": play the walk cycle in place while
+    /// standing still. Nearly every NPC in the original has this enabled.
+    /// Defaults to false (a statue) for map JSON predating this field.
+    #[serde(default)]
+    pub step_anime: bool,
     pub facing: String,
     pub dialogue: DialogueData,
 }

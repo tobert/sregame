@@ -298,6 +298,10 @@ def extract_npcs(rpg_data, source_filename=""):
             # src/character_sheet.rs). Dropping it renders every NPC as the
             # sheet's top-left character.
             "sprite_index": image['characterIndex'],
+            # RPGMaker "Stepping Animation": the character plays its walk
+            # pattern in place while stationary. Nearly every NPC in the
+            # original has this on - without it the town is full of statues.
+            "step_anime": page['stepAnime'],
             "facing": convert_direction(image['direction']),
             "dialogue": {
                 "speaker": speaker,
@@ -360,6 +364,59 @@ def extract_exits_from_events(events):
                 })
 
     return exits
+
+
+def strip_sheet_prefix(character_name):
+    """RPGMaker filename prefixes ('!' = object sheet: no 6px draw offset,
+    ignores bush; '$' = single-character sheet) are metadata, not identity.
+    Our copied assets drop them ('!doors.png' ships as 'doors.png'), so
+    sprite references in clean JSON must drop them too."""
+    return character_name.lstrip('!$')
+
+
+def extract_doors(events, source_filename=""):
+    """Extract visible door sprites: events that both carry a character image
+    and perform a code-201 transfer (the town's '!doors' events). The exits
+    themselves are extracted separately by extract_exits_from_events; this
+    captures only the visual so the renderer can draw (and animate) a door
+    on the trigger tile. Interior 'To Town' exits have no image in the
+    original and stay invisible - that's faithful, not a gap.
+
+    frame_width/frame_height are baked here because RPGMaker derives frame
+    size from sheet dimensions (width/12 x height/8 - '!doors.png' is
+    576x768, so doors are 48x96: one tile wide, TWO tiles tall) and the
+    runtime shouldn't need to inspect image dimensions before spawning.
+    """
+    doors = []
+
+    for event in events:
+        if event is None or not event['pages']:
+            continue
+
+        page = event['pages'][0]
+        image = page['image']
+        if not image['characterName']:
+            continue
+        if not any(cmd['code'] == 201 for cmd in page['list']):
+            continue
+
+        sheet_path = RPGMAKER_ROOT / "img" / "characters" / f"{image['characterName']}.png"
+        with Image.open(sheet_path) as sheet:
+            frame_width = sheet.width // 12
+            frame_height = sheet.height // 8
+
+        doors.append({
+            "x": event['x'],
+            "y": event['y'],
+            "sprite": strip_sheet_prefix(image['characterName']),
+            "sprite_index": image['characterIndex'],
+            "facing": convert_direction(image['direction']),
+            "pattern": image['pattern'],
+            "frame_width": frame_width,
+            "frame_height": frame_height,
+        })
+
+    return doors
 
 
 # ---------------------------------------------------------------------------
@@ -558,6 +615,7 @@ def convert_map(rpgmaker_map_path, output_path, tileset_entry, compositor):
 
     npcs = extract_npcs(rpg_data, rpgmaker_map_path.name)
     exits = extract_exits_from_events(rpg_data['events'])
+    doors = extract_doors(rpg_data['events'], rpgmaker_map_path.name)
 
     clean_data = {
         "name": rpg_data['displayName'],
@@ -568,6 +626,7 @@ def convert_map(rpgmaker_map_path, output_path, tileset_entry, compositor):
         "collision": collision,
         "npcs": npcs,
         "exits": exits,
+        "doors": doors,
     }
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

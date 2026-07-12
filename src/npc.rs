@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::game_state::Mode;
+use crate::game_state::{GameState, Mode};
 use crate::player::Player;
 use crate::dialogue::StartDialogueEvent;
 use crate::assets::GameAssets;
@@ -15,9 +15,58 @@ impl Plugin for NpcPlugin {
             .register_type::<NpcDialogue>()
             .register_type::<Interactable>()
             .add_systems(Update, (
-            check_npc_proximity,
-            handle_interaction_input,
-        ).chain().run_if(in_state(Mode::Exploring)));
+                check_npc_proximity,
+                handle_interaction_input,
+            ).chain().run_if(in_state(Mode::Exploring)))
+            // Stepping runs whenever the game is playing - in the original,
+            // NPCs keep bobbing behind an open dialogue box too.
+            .add_systems(Update, animate_stepping_npcs.run_if(in_state(GameState::Playing)));
+    }
+}
+
+/// RPGMaker's "Stepping Animation": cycle the walk patterns in place.
+/// Present only on NPCs whose original event had stepAnime enabled.
+#[derive(Component)]
+pub struct StepAnimation {
+    timer: Timer,
+    step: u8,
+}
+
+impl Default for StepAnimation {
+    fn default() -> Self {
+        Self {
+            // The original's events use move speed 3: a pattern step every
+            // 18 - 2*3 = 12 frames at 60fps = 0.2s.
+            timer: Timer::from_seconds(0.2, TimerMode::Repeating),
+            step: 0,
+        }
+    }
+}
+
+/// RPGMaker's stationary walk cycle is a ping-pong through the middle
+/// column: pattern 0, 1, 2, 1, 0, 1, ... (rmmz_objects.js pattern() renders
+/// internal step 3 as pattern 1).
+pub fn step_pattern(step: u8) -> u32 {
+    [0, 1, 2, 1][(step % 4) as usize]
+}
+
+fn animate_stepping_npcs(
+    time: Res<Time>,
+    mut query: Query<(&Npc, &mut StepAnimation, &mut Sprite)>,
+) {
+    for (npc, mut anim, mut sprite) in &mut query {
+        anim.timer.tick(time.delta());
+        if !anim.timer.just_finished() {
+            continue;
+        }
+        anim.step = (anim.step + 1) % 4;
+        if let Some(atlas) = &mut sprite.texture_atlas {
+            atlas.index = crate::character_sheet::atlas_index(
+                npc.sprite_slot,
+                npc.sprite_facing as u32,
+                step_pattern(anim.step),
+            ) as usize;
+        }
     }
 }
 
@@ -77,6 +126,7 @@ pub fn spawn_npc(
     position: Vec3,
     sprite_handle: Handle<Image>,
     npc_data: Npc,
+    step_anime: bool,
     dialogue: NpcDialogue,
     tracer: Option<&GameTracer>,
 ) -> Entity {
@@ -102,7 +152,7 @@ pub fn spawn_npc(
 
     info!("👤 NPC spawned: {} at ({:.0}, {:.0})", npc_data.name, position.x, position.y);
 
-    commands.spawn((
+    let mut entity_commands = commands.spawn((
         npc_data,
         dialogue,
         Interactable::default(),
@@ -114,7 +164,11 @@ pub fn spawn_npc(
             },
         ),
         Transform::from_translation(position),
-    )).id()
+    ));
+    if step_anime {
+        entity_commands.insert(StepAnimation::default());
+    }
+    entity_commands.id()
 }
 
 fn check_npc_proximity(
@@ -222,6 +276,25 @@ fn handle_interaction_input(
         if let Some((mut span, guard)) = telemetry_guard {
             drop(guard);
             span.end();
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn step_pattern_ping_pongs_through_the_middle() {
+        // RPGMaker's stationary cycle: 0, 1, 2, 1, then wraps.
+        let observed: Vec<u32> = (0..8).map(step_pattern).collect();
+        assert_eq!(observed, vec![0, 1, 2, 1, 0, 1, 2, 1]);
+    }
+
+    #[test]
+    fn step_pattern_never_leaves_the_slot_columns() {
+        for step in 0..=u8::MAX {
+            assert!(step_pattern(step) < 3, "step {step} escaped the 3 patterns");
         }
     }
 }

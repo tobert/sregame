@@ -11,6 +11,7 @@ impl Plugin for PlayerPlugin {
         app.register_type::<Player>()
             .register_type::<Velocity>()
             .register_type::<Facing>()
+            .add_message::<BumpedIntoTile>()
             .add_systems(OnEnter(GameState::Playing), spawn_player)
             .add_systems(Update, (
                 player_movement_input,
@@ -71,6 +72,17 @@ impl Default for AnimationState {
 
 const PLAYER_SPEED: f32 = 150.0;
 
+/// Emitted when the player tries to walk into a collision-blocked tile.
+/// RPGMaker's "Player Touch" trigger fires on exactly this bump - the
+/// town's door tiles are themselves impassable, so a door exit can only
+/// ever fire via a bump, never by standing on its tile (see
+/// transitions::check_map_exits).
+#[derive(Message)]
+pub struct BumpedIntoTile {
+    pub tile_x: i32,
+    pub tile_y: i32,
+}
+
 fn spawn_player(
     mut commands: Commands,
     game_assets: Res<GameAssets>,
@@ -128,11 +140,20 @@ fn spawn_player(
 
 fn player_movement_input(
     keyboard: Res<ButtonInput<KeyCode>>,
+    departing: Option<Res<crate::transitions::DepartingDoor>>,
     mut query: Query<(&mut Velocity, &mut Facing, &mut AnimationState), With<Player>>,
 ) {
     let Ok((mut velocity, mut facing, mut anim_state)) = query.single_mut() else {
         return;
     };
+
+    // Input freezes while a door-open departure plays out, like RPGMaker's
+    // transfer lock.
+    if departing.is_some() {
+        velocity.0 = Vec2::ZERO;
+        anim_state.is_moving = false;
+        return;
+    }
 
     let mut direction = Vec2::ZERO;
 
@@ -169,6 +190,7 @@ fn apply_movement(
     time: Res<Time>,
     collision_map: Option<Res<CollisionMap>>,
     mut query: Query<(&Velocity, &mut Transform), With<Player>>,
+    mut bumps: MessageWriter<BumpedIntoTile>,
 ) {
     for (velocity, mut transform) in &mut query {
         if velocity.0.length_squared() == 0.0 {
@@ -180,6 +202,7 @@ fn apply_movement(
         let new_x = transform.translation.x + delta_x;
         let new_y = transform.translation.y + delta_y;
 
+        let mut blocked_tile = None;
         let can_move = if let Some(collision_map) = &collision_map {
             let (tile_x, tile_y) = crate::map_data::world_to_tile(
                 Vec2::new(new_x, new_y),
@@ -187,7 +210,11 @@ fn apply_movement(
                 collision_map.height,
             );
 
-            collision_map.is_walkable(tile_x, tile_y)
+            let walkable = collision_map.is_walkable(tile_x, tile_y);
+            if !walkable {
+                blocked_tile = Some((tile_x, tile_y));
+            }
+            walkable
         } else {
             true
         };
@@ -195,6 +222,8 @@ fn apply_movement(
         if can_move {
             transform.translation.x = new_x;
             transform.translation.y = new_y;
+        } else if let Some((tile_x, tile_y)) = blocked_tile {
+            bumps.write(BumpedIntoTile { tile_x, tile_y });
         }
     }
 }

@@ -3993,6 +3993,7 @@
       "y": 7,
       "sprite": "Mando",
       "sprite_index": 0,
+      "step_anime": false,
       "facing": "down",
       "dialogue": {
         "speaker": "Boba Jacobian",
@@ -4009,6 +4010,7 @@
       "y": 9,
       "sprite": "SF_Actor1",
       "sprite_index": 5,
+      "step_anime": false,
       "facing": "left",
       "dialogue": {
         "speaker": "Desi Goner",
@@ -4026,6 +4028,7 @@
       "y": 2,
       "sprite": "People1",
       "sprite_index": 2,
+      "step_anime": false,
       "facing": "down",
       "dialogue": {
         "speaker": "Tenchi Reader",
@@ -4044,6 +4047,7 @@
       "y": 21,
       "sprite": "Monster",
       "sprite_index": 2,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Courage",
@@ -4061,6 +4065,7 @@
       "y": 7,
       "sprite": "casey",
       "sprite_index": 0,
+      "step_anime": false,
       "facing": "down",
       "dialogue": {
         "speaker": "Casey",
@@ -4077,6 +4082,7 @@
       "y": 32,
       "sprite": "People1",
       "sprite_index": 7,
+      "step_anime": false,
       "facing": "right",
       "dialogue": {
         "speaker": "Nanny Ogg Vorbis",
@@ -4094,6 +4100,7 @@
       "y": 7,
       "sprite": "Actor1",
       "sprite_index": 4,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Glenn Gary",
@@ -4114,6 +4121,7 @@
       "y": 13,
       "sprite": "Actor2",
       "sprite_index": 3,
+      "step_anime": false,
       "facing": "right",
       "dialogue": {
         "speaker": "Agi Lecoach",
@@ -4134,6 +4142,7 @@
       "y": 18,
       "sprite": "Evil",
       "sprite_index": 3,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Paws Alljohn",
@@ -4152,6 +4161,7 @@
       "y": 13,
       "sprite": "SF_Monster",
       "sprite_index": 4,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Johnny Mnemomena",
@@ -4169,6 +4179,7 @@
       "y": 13,
       "sprite": "People4",
       "sprite_index": 7,
+      "step_anime": true,
       "facing": "left",
       "dialogue": {
         "speaker": "Frau Barella",
@@ -4209,6 +4220,48 @@
       "target_scene": "MahoganyRow",
       "target_spawn_x": 16,
       "target_spawn_y": 10
+    }
+  ],
+  "doors": [
+    {
+      "x": 8,
+      "y": 29,
+      "sprite": "doors",
+      "sprite_index": 1,
+      "facing": "down",
+      "pattern": 1,
+      "frame_width": 48,
+      "frame_height": 96
+    },
+    {
+      "x": 23,
+      "y": 20,
+      "sprite": "doors",
+      "sprite_index": 1,
+      "facing": "down",
+      "pattern": 1,
+      "frame_width": 48,
+      "frame_height": 96
+    },
+    {
+      "x": 6,
+      "y": 18,
+      "sprite": "doors",
+      "sprite_index": 2,
+      "facing": "down",
+      "pattern": 1,
+      "frame_width": 48,
+      "frame_height": 96
+    },
+    {
+      "x": 29,
+      "y": 13,
+      "sprite": "doors",
+      "sprite_index": 1,
+      "facing": "down",
+      "pattern": 1,
+      "frame_width": 48,
+      "frame_height": 96
     }
   ]
 }

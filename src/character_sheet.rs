@@ -24,8 +24,17 @@ const FACINGS_PER_SLOT: u32 = 4;
 pub const STANDING_PATTERN: u32 = 1;
 
 pub fn sheet_layout() -> TextureAtlasLayout {
+    sheet_layout_with_frame(UVec2::splat(FRAME_SIZE))
+}
+
+/// Same 12x8 grid, non-square frames. RPGMaker derives frame size from the
+/// sheet's own dimensions (width/12 x height/8), so object sheets like
+/// doors.png (576x768) have 48x96 frames - one tile wide, two tiles tall.
+/// `atlas_index` works unchanged: grid *positions* don't depend on frame
+/// size.
+pub fn sheet_layout_with_frame(frame_size: UVec2) -> TextureAtlasLayout {
     TextureAtlasLayout::from_grid(
-        UVec2::splat(FRAME_SIZE),
+        frame_size,
         SHEET_COLUMNS,
         SHEET_ROWS,
         None,

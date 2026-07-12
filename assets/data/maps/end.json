@@ -678,6 +678,7 @@
       "y": 6,
       "sprite": "Evil",
       "sprite_index": 3,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Dave",
@@ -697,6 +698,7 @@
       "y": 4,
       "sprite": "Nature",
       "sprite_index": 1,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Amy Tobey",
@@ -715,6 +717,7 @@
       "y": 7,
       "sprite": "Actor2",
       "sprite_index": 3,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Agi Lecoach",
@@ -735,6 +738,7 @@
       "y": 6,
       "sprite": "Actor1",
       "sprite_index": 4,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Glenn Gary",
@@ -754,6 +758,7 @@
       "y": 7,
       "sprite": "People4",
       "sprite_index": 7,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Frau Barella",
@@ -771,6 +776,7 @@
       "y": 7,
       "sprite": "casey",
       "sprite_index": 0,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Casey",
@@ -787,6 +793,7 @@
       "y": 8,
       "sprite": "Greg",
       "sprite_index": 0,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Managear Greg",
@@ -804,6 +811,7 @@
       "y": 7,
       "sprite": "People1",
       "sprite_index": 5,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Devo Pestorius",
@@ -821,6 +829,7 @@
       "y": 7,
       "sprite": "People1",
       "sprite_index": 3,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Polly Math",
@@ -838,6 +847,7 @@
       "y": 7,
       "sprite": "People1",
       "sprite_index": 4,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Cody",
@@ -854,6 +864,7 @@
       "y": 8,
       "sprite": "People2",
       "sprite_index": 4,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Cary Erguy",
@@ -871,6 +882,7 @@
       "y": 7,
       "sprite": "People1",
       "sprite_index": 2,
+      "step_anime": false,
       "facing": "down",
       "dialogue": {
         "speaker": "Tenchi",
@@ -889,6 +901,7 @@
       "y": 7,
       "sprite": "Actor2",
       "sprite_index": 5,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Pandora",
@@ -906,6 +919,7 @@
       "y": 8,
       "sprite": "People3",
       "sprite_index": 0,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Cee Eeoh",
@@ -924,6 +938,7 @@
       "y": 7,
       "sprite": "People4",
       "sprite_index": 6,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Vee Peapod",
@@ -940,6 +955,7 @@
       "y": 8,
       "sprite": "Monster",
       "sprite_index": 5,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Mistress of Scrum",
@@ -956,6 +972,7 @@
       "y": 8,
       "sprite": "SF_Monster",
       "sprite_index": 4,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Gantt",
@@ -973,6 +990,7 @@
       "y": 6,
       "sprite": "SF_Actor1",
       "sprite_index": 5,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Desi Goner",
@@ -990,6 +1008,7 @@
       "y": 8,
       "sprite": "People4",
       "sprite_index": 4,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Robert Bob",
@@ -1006,6 +1025,7 @@
       "y": 8,
       "sprite": "SF_Actor1",
       "sprite_index": 7,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "The Director",
@@ -1024,6 +1044,7 @@
       "y": 8,
       "sprite": "Monster",
       "sprite_index": 7,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "The Boss",
@@ -1042,6 +1063,7 @@
       "y": 8,
       "sprite": "Monster",
       "sprite_index": 1,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Tenex",
@@ -1061,6 +1083,7 @@
       "y": 6,
       "sprite": "Actor3",
       "sprite_index": 3,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Shelly the Intern",
@@ -1078,6 +1101,7 @@
       "y": 6,
       "sprite": "SF_Actor2",
       "sprite_index": 3,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Leah Dev",
@@ -1097,6 +1121,7 @@
       "y": 6,
       "sprite": "SF_Actor3",
       "sprite_index": 2,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Merc",
@@ -1114,6 +1139,7 @@
       "y": 6,
       "sprite": "SF_Actor1",
       "sprite_index": 4,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Kirito",
@@ -1132,6 +1158,7 @@
       "y": 9,
       "sprite": "Monster",
       "sprite_index": 2,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Rick",
@@ -1148,6 +1175,7 @@
       "y": 9,
       "sprite": "People2",
       "sprite_index": 5,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Seventh Daughter of Nine",
@@ -1166,6 +1194,7 @@
       "y": 9,
       "sprite": "People3",
       "sprite_index": 6,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Hidaslo Xela",
@@ -1182,6 +1211,7 @@
       "y": 9,
       "sprite": "Nature",
       "sprite_index": 4,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Nyaanager Evie",
@@ -1199,6 +1229,7 @@
       "y": 9,
       "sprite": "People4",
       "sprite_index": 0,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Ocean",
@@ -1217,6 +1248,7 @@
       "y": 9,
       "sprite": "People2",
       "sprite_index": 1,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Luna",
@@ -1234,6 +1266,7 @@
       "y": 9,
       "sprite": "DrMcfire",
       "sprite_index": 0,
+      "step_anime": true,
       "facing": "down",
       "dialogue": {
         "speaker": "Doctor McFire",
@@ -1246,5 +1279,6 @@
       }
     }
   ],
-  "exits": []
+  "exits": [],
+  "doors": []
 }

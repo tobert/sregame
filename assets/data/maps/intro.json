@@ -678,6 +678,7 @@
       "y": 4,
       "sprite": "Amy-Walking",
       "sprite_index": 0,
+      "step_anime": false,
       "facing": "down",
       "dialogue": {
         "speaker": "Amy",
@@ -699,5 +700,6 @@
       "target_spawn_x": 16,
       "target_spawn_y": 23
     }
-  ]
+  ],
+  "doors": []
 }

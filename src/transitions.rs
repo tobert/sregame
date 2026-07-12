@@ -13,7 +13,85 @@ impl Plugin for TransitionsPlugin {
         // Gated on Mode::Exploring (rather than GameState::Playing) so a
         // portal can't fire while a dialogue box is showing - Mode only
         // exists at all while GameState::Playing, so this also implies that.
-        app.add_systems(Update, check_map_exits.run_if(in_state(Mode::Exploring)));
+        app.add_systems(Update, (
+            check_map_exits,
+            animate_door_departure,
+        ).chain().run_if(in_state(Mode::Exploring)));
+    }
+}
+
+/// A visible door sprite sitting on an exit trigger tile (the town's
+/// `!doors` events - see MapData::doors). Spawned by tilemap::spawn_map,
+/// despawned with the map.
+#[derive(Component)]
+pub struct Door {
+    pub tile_x: u32,
+    pub tile_y: u32,
+    pub sprite_slot: u32,
+    pub pattern: u32,
+}
+
+/// Present while a door-open sequence runs; the scene transition fires when
+/// it finishes. Mirrors the original's Common Event 24 "Open Door": the
+/// door's animation row steps closed -> ajar -> half -> open (RPGMaker
+/// abuses the 4 direction rows as opening stages), ~3 frames apart, then
+/// the transfer happens. Player input and exit checks pause while this
+/// resource exists (see player.rs / check_map_exits).
+#[derive(Resource)]
+pub struct DepartingDoor {
+    door: Entity,
+    target_scene: Scene,
+    spawn_x: u32,
+    spawn_y: u32,
+    /// 0 = closed (resting); 1..=3 = opening rows; past 3 = transfer.
+    stage: u8,
+    timer: Timer,
+}
+
+/// Original timing: 3 frames at 60fps between row changes.
+const DOOR_STAGE_SECONDS: f32 = 0.05;
+/// Hold the fully-open door briefly before transferring, standing in for
+/// the original's screen fade.
+const DOOR_OPEN_HOLD_SECONDS: f32 = 0.2;
+
+fn animate_door_departure(
+    mut commands: Commands,
+    departing: Option<ResMut<DepartingDoor>>,
+    time: Res<Time>,
+    mut doors: Query<(&Door, &mut Sprite)>,
+    mut next_scene: ResMut<NextState<Scene>>,
+) {
+    let Some(mut dep) = departing else {
+        return;
+    };
+
+    dep.timer.tick(time.delta());
+    if !dep.timer.just_finished() {
+        return;
+    }
+
+    dep.stage += 1;
+
+    if dep.stage <= 3 {
+        if let Ok((door, mut sprite)) = doors.get_mut(dep.door) {
+            if let Some(atlas) = &mut sprite.texture_atlas {
+                atlas.index = crate::character_sheet::atlas_index(
+                    door.sprite_slot,
+                    u32::from(dep.stage),
+                    door.pattern,
+                ) as usize;
+            }
+        }
+        let next_wait = if dep.stage == 3 { DOOR_OPEN_HOLD_SECONDS } else { DOOR_STAGE_SECONDS };
+        dep.timer = Timer::from_seconds(next_wait, TimerMode::Once);
+    } else {
+        info!("Door fully open - transferring to {:?}", dep.target_scene);
+        commands.insert_resource(PendingArrival {
+            spawn_x: dep.spawn_x,
+            spawn_y: dep.spawn_y,
+        });
+        next_scene.set(dep.target_scene);
+        commands.remove_resource::<DepartingDoor>();
     }
 }
 
@@ -22,8 +100,17 @@ fn check_map_exits(
     player_query: Query<&Transform, With<Player>>,
     map_exits: Option<Res<MapExits>>,
     collision_map: Option<Res<CollisionMap>>,
+    doors: Query<(Entity, &Door)>,
+    departing: Option<Res<DepartingDoor>>,
+    mut bumps: MessageReader<crate::player::BumpedIntoTile>,
     mut next_scene: ResMut<NextState<Scene>>,
 ) {
+    // A departure is already in flight - don't re-trigger. Still drain the
+    // bump messages so stale bumps can't fire an exit later.
+    if departing.is_some() {
+        bumps.clear();
+        return;
+    }
     let Some(map_exits) = map_exits else {
         return;
     };
@@ -43,8 +130,20 @@ fn check_map_exits(
         collision_map.height,
     );
 
+    // An exit fires when the player stands on its tile (walkable exit mats:
+    // the interior "To Town" tiles) OR bumps into it (RPGMaker Player-Touch
+    // on impassable door tiles - the town doors are collision-blocked, so
+    // standing on them is impossible).
+    let mut candidate_tiles: Vec<(i32, i32)> = vec![(tile_x, tile_y)];
+    for bump in bumps.read() {
+        candidate_tiles.push((bump.tile_x, bump.tile_y));
+    }
+
     for exit in &map_exits.0 {
-        if exit.trigger_x as i32 != tile_x || exit.trigger_y as i32 != tile_y {
+        let hit = candidate_tiles
+            .iter()
+            .any(|&(cx, cy)| exit.trigger_x as i32 == cx && exit.trigger_y as i32 == cy);
+        if !hit {
             continue;
         }
 
@@ -58,14 +157,31 @@ fn check_map_exits(
 
         info!(
             "Player triggered exit at tile ({}, {}) -> {:?} (spawn at {}, {})",
-            tile_x, tile_y, target_scene, exit.target_spawn_x, exit.target_spawn_y
+            exit.trigger_x, exit.trigger_y, target_scene, exit.target_spawn_x, exit.target_spawn_y
         );
 
-        commands.insert_resource(PendingArrival {
-            spawn_x: exit.target_spawn_x,
-            spawn_y: exit.target_spawn_y,
+        // If a door sprite sits on this tile, play its open animation first
+        // and transfer when it finishes; bare exits transfer immediately.
+        let door_here = doors.iter().find(|(_, door)| {
+            door.tile_x == exit.trigger_x && door.tile_y == exit.trigger_y
         });
-        next_scene.set(target_scene);
+
+        if let Some((door_entity, _)) = door_here {
+            commands.insert_resource(DepartingDoor {
+                door: door_entity,
+                target_scene,
+                spawn_x: exit.target_spawn_x,
+                spawn_y: exit.target_spawn_y,
+                stage: 0,
+                timer: Timer::from_seconds(DOOR_STAGE_SECONDS, TimerMode::Once),
+            });
+        } else {
+            commands.insert_resource(PendingArrival {
+                spawn_x: exit.target_spawn_x,
+                spawn_y: exit.target_spawn_y,
+            });
+            next_scene.set(target_scene);
+        }
         // Only honor the first matching exit on this tile.
         break;
     }
@@ -97,6 +213,7 @@ mod tests {
     fn setup_world(player_tile: (u32, u32), exits: Vec<ExitData>, width: u32, height: u32) -> World {
         let mut world = World::new();
         world.init_resource::<NextState<Scene>>();
+        world.init_resource::<Messages<crate::player::BumpedIntoTile>>();
         world.insert_resource(MapExits(exits));
         world.insert_resource(CollisionMap::new(width, height));
 
@@ -137,6 +254,69 @@ mod tests {
         assert!(world.get_resource::<PendingArrival>().is_none());
     }
 
+    #[test]
+    fn bumping_into_an_exit_tile_triggers_it_without_standing_on_it() {
+        // The town's door tiles are collision-blocked, so the player can
+        // never STAND on one - the exit must fire from the bump (RPGMaker
+        // "Player Touch"). Regression test for doors being unreachable:
+        // walking into a door did nothing because only the standing tile
+        // was ever checked.
+        let mut world = setup_world((8, 30), town_of_endgame_exits(), TOWN_WIDTH, TOWN_HEIGHT);
+        world.write_message(crate::player::BumpedIntoTile { tile_x: 8, tile_y: 29 });
+
+        world.run_system_once(check_map_exits).unwrap();
+
+        let next = world.resource::<NextState<Scene>>();
+        assert!(
+            matches!(next, NextState::Pending(Scene::TeamMarathonRetro)),
+            "bump into the door tile should transfer, got {next:?}"
+        );
+    }
+
+    #[test]
+    fn door_on_exit_tile_opens_before_the_transition_fires() {
+        // With a Door entity on the trigger tile, touching the exit must
+        // NOT transition immediately: it starts the open choreography
+        // (DepartingDoor) and the transition fires only after the door has
+        // cycled through its opening rows plus the open-hold delay.
+        let mut world = setup_world((8, 29), town_of_endgame_exits(), TOWN_WIDTH, TOWN_HEIGHT);
+        world.init_resource::<Time>();
+        world.spawn((
+            Sprite::default(),
+            Door { tile_x: 8, tile_y: 29, sprite_slot: 1, pattern: 1 },
+        ));
+
+        world.run_system_once(check_map_exits).unwrap();
+
+        assert!(
+            matches!(world.resource::<NextState<Scene>>(), NextState::Unchanged),
+            "transition must wait for the door animation"
+        );
+        assert!(world.get_resource::<PendingArrival>().is_none());
+        assert!(world.get_resource::<DepartingDoor>().is_some());
+
+        // Play the whole choreography out: 3 row-steps at DOOR_STAGE_SECONDS
+        // plus the open hold. Tick generously past the total.
+        for _ in 0..12 {
+            world
+                .resource_mut::<Time>()
+                .advance_by(std::time::Duration::from_millis(100));
+            world.run_system_once(animate_door_departure).unwrap();
+        }
+
+        let next = world.resource::<NextState<Scene>>();
+        assert!(
+            matches!(next, NextState::Pending(Scene::TeamMarathonRetro)),
+            "transition should fire after the door opens, got {next:?}"
+        );
+        let arrival = world.resource::<PendingArrival>();
+        assert_eq!((arrival.spawn_x, arrival.spawn_y), (12, 15));
+        assert!(
+            world.get_resource::<DepartingDoor>().is_none(),
+            "DepartingDoor should be cleaned up after the transfer"
+        );
+    }
+
     // Intro's real, converted exit (assets/data/maps/intro.json) - the one
     // door out of the game's opening scene, back to Town of Endgame.
     fn intro_exits() -> Vec<ExitData> {
@@ -159,6 +339,7 @@ mod tests {
 
         let mut world = World::new();
         world.init_resource::<NextState<Scene>>();
+        world.init_resource::<Messages<crate::player::BumpedIntoTile>>();
         world.insert_resource(MapExits(intro_exits()));
         world.insert_resource(CollisionMap::new(WIDTH, HEIGHT));
         let world_pos = tile_to_world(8, 1, WIDTH, HEIGHT);

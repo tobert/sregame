@@ -3,6 +3,7 @@ use bevy_ecs_tilemap::prelude::*;
 use crate::game_state::Scene;
 use crate::camera::{MainCamera, CameraFollow, CameraBounds};
 use crate::npc::{spawn_npc, Npc, NpcDialogue};
+use crate::transitions::Door;
 use crate::instrumentation::GameTracer;
 use crate::assets::GameAssets;
 use crate::map_data::{MapData, ExitData, tile_to_world, facing_from_string};
@@ -168,10 +169,6 @@ fn spawn_map(
     const UPPER_Z: f32 = 2.0;
 
     let map_size = TilemapSize { x: map.width, y: map.height };
-    let map_transform_xy = (
-        -(map.width as f32 * TILE_SIZE.x) / 2.0,
-        -(map.height as f32 * TILE_SIZE.y) / 2.0,
-    );
 
     let ground_entity = commands.spawn_empty().id();
     let mut ground_storage = TileStorage::empty(map_size);
@@ -218,6 +215,13 @@ fn spawn_map(
         }
     }
 
+    // TilemapAnchor::Center, NOT a hand-rolled -(W*48)/2 transform: the
+    // tilemap's native origin is the CENTER of the bottom-left tile (see
+    // bevy_ecs_tilemap::anchor), so the old manual offset rendered the whole
+    // map half a tile (24px) down-left of where tile_to_world - and
+    // therefore collision, NPCs, exits, and the player - believed tiles
+    // were. Felt like "collision is shifted" in playtesting. With Center,
+    // rendered tile centers coincide exactly with tile_to_world output.
     commands.entity(ground_entity).insert((
         TilemapBundle {
             grid_size: GRID_SIZE,
@@ -225,7 +229,8 @@ fn spawn_map(
             storage: ground_storage,
             texture: TilemapTexture::Single(texture_handle.clone()),
             tile_size: TILE_SIZE,
-            transform: Transform::from_xyz(map_transform_xy.0, map_transform_xy.1, GROUND_Z),
+            anchor: TilemapAnchor::Center,
+            transform: Transform::from_xyz(0.0, 0.0, GROUND_Z),
             ..default()
         },
         Map,
@@ -238,7 +243,8 @@ fn spawn_map(
             storage: upper_storage,
             texture: TilemapTexture::Single(texture_handle),
             tile_size: TILE_SIZE,
-            transform: Transform::from_xyz(map_transform_xy.0, map_transform_xy.1, UPPER_Z),
+            anchor: TilemapAnchor::Center,
+            transform: Transform::from_xyz(0.0, 0.0, UPPER_Z),
             ..default()
         },
         Map,
@@ -289,7 +295,7 @@ fn spawn_map(
             String::new()
         };
 
-        spawn_npc(
+        let npc_entity = spawn_npc(
             &mut commands,
             &game_assets,
             &mut texture_atlas_layouts,
@@ -300,6 +306,7 @@ fn spawn_map(
                 sprite_facing: facing_from_string(&npc_data.facing),
                 sprite_slot: npc_data.sprite_index,
             },
+            npc_data.step_anime,
             NpcDialogue {
                 speaker: npc_data.dialogue.speaker.clone(),
                 portrait_path,
@@ -308,8 +315,56 @@ fn spawn_map(
             },
             tracer.as_deref(),
         );
+        // Map marker so despawn_map removes NPCs on scene exit. Without it
+        // NPCs leaked across transitions - live but offscreen in the next
+        // map, complete with their Interactable zones (ghost dialogues).
+        // Found via a mid-transfer BRP screenshot: a town NPC rendered in
+        // the void outside the destination room.
+        commands.entity(npc_entity).insert(Map);
 
         info!("Spawned NPC: {} at tile ({}, {})", npc_data.name, npc_data.x, npc_data.y);
+    }
+
+    // Door sprites on exit trigger tiles (visual only - exit logic is in
+    // MapExits; the open animation is driven by transitions.rs).
+    for door in &map.doors {
+        let Some(handle) = game_assets.npc_sprites.get(&door.sprite).cloned() else {
+            warn!("Unknown door sprite: {} - skipping door at ({}, {})",
+                door.sprite, door.x, door.y);
+            continue;
+        };
+
+        let layout = texture_atlas_layouts.add(
+            crate::character_sheet::sheet_layout_with_frame(
+                UVec2::new(door.frame_width, door.frame_height),
+            ),
+        );
+        let index = crate::character_sheet::atlas_index(
+            door.sprite_index,
+            facing_from_string(&door.facing) as u32,
+            door.pattern,
+        ) as usize;
+
+        let world_pos = tile_to_world(door.x, door.y, map.width, map.height);
+        // Tall frames anchor to the tile's bottom edge like RPGMaker: a
+        // 48x96 door covers its trigger tile plus the tile above it.
+        let y_offset = (door.frame_height as f32 - TILE_SIZE.y) / 2.0;
+
+        commands.spawn((
+            Sprite::from_atlas_image(handle, TextureAtlas { layout, index }),
+            // Below the player/NPCs (z=1.0): the player walking onto the
+            // door tile draws in front of the opening door, as in RPGMaker.
+            Transform::from_xyz(world_pos.x, world_pos.y + y_offset, 0.9),
+            Map,
+            Door {
+                tile_x: door.x,
+                tile_y: door.y,
+                sprite_slot: door.sprite_index,
+                pattern: door.pattern,
+            },
+        ));
+
+        info!("Spawned door at tile ({}, {})", door.x, door.y);
     }
 
     // If we arrived via a portal (see transitions.rs), place the player at
