@@ -293,7 +293,7 @@ def extract_npcs(rpg_data, source_filename=""):
             "name": event['name'],
             "x": event['x'],
             "y": event['y'],
-            "sprite": image['characterName'] or override.get('synthetic_sprite'),
+            "sprite": strip_sheet_prefix(image['characterName']) or override.get('synthetic_sprite'),
             # Which character slot (0-7) of the sheet this event uses; the
             # renderer slices the 4x2-character sheet with this (see
             # src/character_sheet.rs). Dropping it renders every NPC as the

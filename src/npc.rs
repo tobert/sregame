@@ -224,6 +224,8 @@ fn handle_interaction_input(
     player_query: Query<(&Transform, Option<&PlayerSessionTrace>), With<Player>>,
     npc_query: Query<(&Transform, &NpcDialogue), (With<Npc>, With<InRange>)>,
     mut dialogue_events: MessageWriter<StartDialogueEvent>,
+    map_exits: Option<Res<crate::tilemap::MapExits>>,
+    collision_map: Option<Res<crate::tilemap::CollisionMap>>,
     tracer: Option<Res<GameTracer>>,
     meter: Option<Res<GameMeter>>,
 ) {
@@ -236,6 +238,22 @@ fn handle_interaction_input(
     };
 
     let player_pos = player_transform.translation.truncate();
+
+    // An action exit under the player owns the E press - without this, E
+    // on the retro-dialog tile with an NPC in range would fire both the
+    // scripted scene AND that NPC's dialogue in the same frame (kaibo
+    // review 2026-07-12).
+    if let (Some(exits), Some(map)) = (&map_exits, &collision_map) {
+        let (tile_x, tile_y) = crate::map_data::world_to_tile(player_pos, map.width, map.height);
+        let on_action_exit = exits.0.iter().any(|exit| {
+            exit.trigger == crate::map_data::ExitTrigger::Action
+                && exit.trigger_x as i32 == tile_x
+                && exit.trigger_y as i32 == tile_y
+        });
+        if on_action_exit {
+            return;
+        }
+    }
 
     let mut closest_npc: Option<(&NpcDialogue, f32)> = None;
 

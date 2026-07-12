@@ -516,6 +516,9 @@ fn despawn_map(
     }
     commands.remove_resource::<CollisionMap>();
     commands.remove_resource::<MapExits>();
+    // A door departure that caused this teardown holds player input frozen
+    // until the scene actually swaps; release it here.
+    commands.remove_resource::<crate::transitions::DepartingDoor>();
     info!("Map despawned");
 }
 

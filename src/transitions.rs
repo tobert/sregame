@@ -16,7 +16,12 @@ impl Plugin for TransitionsPlugin {
         app.add_systems(Update, (
             check_map_exits,
             animate_door_departure,
-        ).chain().run_if(in_state(Mode::Exploring)))
+        ).chain()
+            // After the player has actually moved this frame: exits read
+            // the post-move position and this frame's bump messages, not
+            // last frame's (kaibo review 2026-07-12, both reviewers).
+            .after(crate::player::PlayerMovementSet)
+            .run_if(in_state(Mode::Exploring)))
             // Fires the deferred transfer once the scripted scene closes
             // (Mode returns to Exploring). Also runs at game start and
             // after every ordinary dialogue - gated on the resource.
@@ -124,7 +129,11 @@ fn animate_door_departure(
             spawn_y: dep.spawn_y,
         });
         next_scene.set(dep.target_scene);
-        commands.remove_resource::<DepartingDoor>();
+        // Deliberately NOT removed here: the state transition applies at
+        // the end of the frame, so removing now would unfreeze player
+        // input (and re-arm check_map_exits) for one frame mid-transfer
+        // (kaibo review 2026-07-12). despawn_map clears it when the old
+        // scene tears down.
     }
 }
 
@@ -473,9 +482,12 @@ mod tests {
         );
         let arrival = world.resource::<PendingArrival>();
         assert_eq!((arrival.spawn_x, arrival.spawn_y), (12, 15));
+        // The resource deliberately lingers until despawn_map so player
+        // input stays frozen through the actual scene swap - removing it
+        // at transfer time gave one frame of free movement mid-transfer.
         assert!(
-            world.get_resource::<DepartingDoor>().is_none(),
-            "DepartingDoor should be cleaned up after the transfer"
+            world.get_resource::<DepartingDoor>().is_some(),
+            "DepartingDoor must persist until the scene teardown clears it"
         );
     }
 
