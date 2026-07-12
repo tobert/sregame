@@ -366,6 +366,52 @@ def extract_exits_from_events(events):
     return exits
 
 
+def extract_props(events, npcs, doors):
+    """Extract ambient visual props: events that carry a character image but
+    have neither dialogue (those are NPCs) nor a transfer (those are doors).
+    Town of Endgame has two: 'doggo' (a dog with a wander route - ported as
+    a stationary stepping sprite for now) and 'The Boss's Truck' (a static
+    vehicle that blocks its tile: RPGMaker events with priority 1 and
+    through=false are impassable, and our baked tile collision knows nothing
+    about events, so the blocking is carried per-prop).
+    """
+    npc_positions = {(n['x'], n['y']) for n in npcs}
+    door_positions = {(d['x'], d['y']) for d in doors}
+    props = []
+
+    for event in events:
+        if event is None or not event['pages']:
+            continue
+
+        page = event['pages'][0]
+        image = page['image']
+        if not image['characterName']:
+            continue
+        if (event['x'], event['y']) in npc_positions or (event['x'], event['y']) in door_positions:
+            continue
+
+        sheet_path = RPGMAKER_ROOT / "img" / "characters" / f"{image['characterName']}.png"
+        with Image.open(sheet_path) as sheet:
+            frame_width = sheet.width // 12
+            frame_height = sheet.height // 8
+
+        props.append({
+            "name": event['name'],
+            "x": event['x'],
+            "y": event['y'],
+            "sprite": strip_sheet_prefix(image['characterName']),
+            "sprite_index": image['characterIndex'],
+            "facing": convert_direction(image['direction']),
+            "pattern": image['pattern'],
+            "step_anime": page['stepAnime'],
+            "blocks": page['priorityType'] == 1 and not page['through'],
+            "frame_width": frame_width,
+            "frame_height": frame_height,
+        })
+
+    return props
+
+
 def strip_sheet_prefix(character_name):
     """RPGMaker filename prefixes ('!' = object sheet: no 6px draw offset,
     ignores bush; '$' = single-character sheet) are metadata, not identity.
@@ -616,6 +662,7 @@ def convert_map(rpgmaker_map_path, output_path, tileset_entry, compositor):
     npcs = extract_npcs(rpg_data, rpgmaker_map_path.name)
     exits = extract_exits_from_events(rpg_data['events'])
     doors = extract_doors(rpg_data['events'], rpgmaker_map_path.name)
+    props = extract_props(rpg_data['events'], npcs, doors)
 
     clean_data = {
         "name": rpg_data['displayName'],
@@ -627,6 +674,7 @@ def convert_map(rpgmaker_map_path, output_path, tileset_entry, compositor):
         "npcs": npcs,
         "exits": exits,
         "doors": doors,
+        "props": props,
     }
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

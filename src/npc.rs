@@ -13,6 +13,7 @@ impl Plugin for NpcPlugin {
         app.register_type::<Npc>()
             .register_type::<NpcFacing>()
             .register_type::<NpcDialogue>()
+            .register_type::<CharacterFrames>()
             .register_type::<Interactable>()
             .add_systems(Update, (
                 check_npc_proximity,
@@ -24,8 +25,18 @@ impl Plugin for NpcPlugin {
     }
 }
 
+/// Which sheet slot and facing row an entity's sprite frames come from -
+/// everything `animate_stepping_npcs` needs to pick atlas indices. Carried
+/// by NPCs and ambient props alike (props have no `Npc` component).
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+pub struct CharacterFrames {
+    pub slot: u32,
+    pub facing_row: u32,
+}
+
 /// RPGMaker's "Stepping Animation": cycle the walk patterns in place.
-/// Present only on NPCs whose original event had stepAnime enabled.
+/// Present only on NPCs/props whose original event had stepAnime enabled.
 #[derive(Component)]
 pub struct StepAnimation {
     timer: Timer,
@@ -52,9 +63,9 @@ pub fn step_pattern(step: u8) -> u32 {
 
 fn animate_stepping_npcs(
     time: Res<Time>,
-    mut query: Query<(&Npc, &mut StepAnimation, &mut Sprite)>,
+    mut query: Query<(&CharacterFrames, &mut StepAnimation, &mut Sprite)>,
 ) {
-    for (npc, mut anim, mut sprite) in &mut query {
+    for (frames, mut anim, mut sprite) in &mut query {
         anim.timer.tick(time.delta());
         if !anim.timer.just_finished() {
             continue;
@@ -62,8 +73,8 @@ fn animate_stepping_npcs(
         anim.step = (anim.step + 1) % 4;
         if let Some(atlas) = &mut sprite.texture_atlas {
             atlas.index = crate::character_sheet::atlas_index(
-                npc.sprite_slot,
-                npc.sprite_facing as u32,
+                frames.slot,
+                frames.facing_row,
                 step_pattern(anim.step),
             ) as usize;
         }
@@ -152,8 +163,14 @@ pub fn spawn_npc(
 
     info!("👤 NPC spawned: {} at ({:.0}, {:.0})", npc_data.name, position.x, position.y);
 
+    let frames = CharacterFrames {
+        slot: npc_data.sprite_slot,
+        facing_row: npc_data.sprite_facing as u32,
+    };
+
     let mut entity_commands = commands.spawn((
         npc_data,
+        frames,
         dialogue,
         Interactable::default(),
         Sprite::from_atlas_image(

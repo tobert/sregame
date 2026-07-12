@@ -39,6 +39,32 @@ pub struct MapData {
     /// `exits`. Defaults to empty for map JSON predating this field.
     #[serde(default)]
     pub doors: Vec<DoorData>,
+    /// Ambient visual props: image-bearing events with no dialogue and no
+    /// transfer (doggo, The Boss's Truck). Defaults to empty for map JSON
+    /// predating this field.
+    #[serde(default)]
+    pub props: Vec<PropData>,
+}
+
+/// One ambient prop sprite. Same sheet-slicing rules as `DoorData`;
+/// `blocks` carries RPGMaker's event collision (priority "same as
+/// characters" + through=false makes the event's tile impassable, which our
+/// tile-flag-baked collision can't know about).
+#[derive(Debug, Clone, Deserialize)]
+pub struct PropData {
+    pub name: String,
+    pub x: u32,
+    pub y: u32,
+    pub sprite: String,
+    pub sprite_index: u32,
+    pub facing: String,
+    pub pattern: u32,
+    #[serde(default)]
+    pub step_anime: bool,
+    #[serde(default)]
+    pub blocks: bool,
+    pub frame_width: u32,
+    pub frame_height: u32,
 }
 
 /// One door sprite. `frame_width`/`frame_height` are baked by
@@ -338,6 +364,30 @@ mod tests {
                     missing.push(format!(
                         "{map_name}: NPC '{}' portrait '{}' -> assets/textures/portraits/{}.png",
                         npc.name, portrait, portrait
+                    ));
+                }
+            }
+
+            for door in &map.doors {
+                if !characters_dir.join(format!("{}.png", door.sprite)).exists() {
+                    missing.push(format!(
+                        "{map_name}: door at ({}, {}) sprite '{}' -> assets/textures/characters/{}.png",
+                        door.x, door.y, door.sprite, door.sprite
+                    ));
+                }
+            }
+
+            for prop in &map.props {
+                if !characters_dir.join(format!("{}.png", prop.sprite)).exists() {
+                    missing.push(format!(
+                        "{map_name}: prop '{}' sprite '{}' -> assets/textures/characters/{}.png",
+                        prop.name, prop.sprite, prop.sprite
+                    ));
+                }
+                if prop.sprite_index > 7 {
+                    missing.push(format!(
+                        "{map_name}: prop '{}' sprite_index {} exceeds the 0-7 slots",
+                        prop.name, prop.sprite_index
                     ));
                 }
             }

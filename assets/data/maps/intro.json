@@ -701,5 +701,6 @@
       "target_spawn_y": 23
     }
   ],
-  "doors": []
+  "doors": [],
+  "props": []
 }

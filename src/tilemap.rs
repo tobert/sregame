@@ -262,6 +262,12 @@ fn spawn_map(
             }
         }
     }
+    // Blocking props (The Boss's Truck): RPGMaker events with priority
+    // "same as characters" and through=false are impassable, and the
+    // tile-flag bake can't know about events.
+    for prop in map.props.iter().filter(|p| p.blocks) {
+        collision_map.set_tile(prop.x, prop.y, TileCollision::Blocked);
+    }
     commands.insert_resource(collision_map);
     commands.insert_resource(MapExits(map.exits.clone()));
 
@@ -365,6 +371,43 @@ fn spawn_map(
         ));
 
         info!("Spawned door at tile ({}, {})", door.x, door.y);
+    }
+
+    // Ambient props (doggo, The Boss's Truck): same sheet slicing as doors,
+    // no interaction. step_anime props bob in place via the shared
+    // CharacterFrames + StepAnimation systems in npc.rs.
+    for prop in &map.props {
+        let Some(handle) = game_assets.npc_sprites.get(&prop.sprite).cloned() else {
+            warn!("Unknown prop sprite: {} - skipping {}", prop.sprite, prop.name);
+            continue;
+        };
+
+        let layout = texture_atlas_layouts.add(
+            crate::character_sheet::sheet_layout_with_frame(
+                UVec2::new(prop.frame_width, prop.frame_height),
+            ),
+        );
+        let facing_row = facing_from_string(&prop.facing) as u32;
+        let index = crate::character_sheet::atlas_index(
+            prop.sprite_index,
+            facing_row,
+            prop.pattern,
+        ) as usize;
+
+        let world_pos = tile_to_world(prop.x, prop.y, map.width, map.height);
+        let y_offset = (prop.frame_height as f32 - TILE_SIZE.y) / 2.0;
+
+        let mut prop_commands = commands.spawn((
+            Sprite::from_atlas_image(handle, TextureAtlas { layout, index }),
+            Transform::from_xyz(world_pos.x, world_pos.y + y_offset, 0.95),
+            crate::npc::CharacterFrames { slot: prop.sprite_index, facing_row },
+            Map,
+        ));
+        if prop.step_anime {
+            prop_commands.insert(crate::npc::StepAnimation::default());
+        }
+
+        info!("Spawned prop: {} at tile ({}, {})", prop.name, prop.x, prop.y);
     }
 
     // If we arrived via a portal (see transitions.rs), place the player at

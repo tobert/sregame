@@ -4263,5 +4263,33 @@
       "frame_width": 48,
       "frame_height": 96
     }
+  ],
+  "props": [
+    {
+      "name": "doggo",
+      "x": 5,
+      "y": 21,
+      "sprite": "Nature",
+      "sprite_index": 0,
+      "facing": "right",
+      "pattern": 0,
+      "step_anime": true,
+      "blocks": false,
+      "frame_width": 48,
+      "frame_height": 48
+    },
+    {
+      "name": "The Boss's Truck",
+      "x": 8,
+      "y": 19,
+      "sprite": "Vehicle",
+      "sprite_index": 6,
+      "facing": "right",
+      "pattern": 0,
+      "step_anime": false,
+      "blocks": true,
+      "frame_width": 48,
+      "frame_height": 48
+    }
   ]
 }
