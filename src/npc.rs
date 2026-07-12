@@ -113,8 +113,7 @@ pub fn spawn_npc(
                 index: sprite_index,
             },
         ),
-        Transform::from_translation(position)
-            .with_scale(Vec3::splat(2.0)),
+        Transform::from_translation(position),
     )).id()
 }
 

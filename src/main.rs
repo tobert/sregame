@@ -241,6 +241,10 @@ fn setup(mut commands: Commands) {
         Camera2d,
         MainCamera,
         CameraFollow::default(),
+        Projection::Orthographic(OrthographicProjection {
+            scale: 1.0 / camera::CAMERA_ZOOM,
+            ..OrthographicProjection::default_2d()
+        }),
         Transform::from_xyz(0.0, 0.0, 999.9),
     ));
 

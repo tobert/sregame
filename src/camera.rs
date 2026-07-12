@@ -2,6 +2,17 @@ use bevy::prelude::*;
 use crate::game_state::GameState;
 use crate::player::Player;
 
+/// The game shows a 960x540 world-unit view upscaled 2x onto the 1920x1080
+/// window - the pixel-art "2x" look, and character/tile proportions matching
+/// the RPGMaker original (~20x11 tiles on screen). Zoom lives on the camera
+/// projection (scale = 1/CAMERA_ZOOM); sprites and tiles both render at
+/// their natural 48px world size. An earlier version instead scaled sprite
+/// entities 2x with an unzoomed camera, which made characters two tiles
+/// tall and the view twice as wide as intended.
+pub const VIEW_WIDTH: f32 = 960.0;
+pub const VIEW_HEIGHT: f32 = 540.0;
+pub const CAMERA_ZOOM: f32 = 2.0;
+
 pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {

@@ -115,8 +115,7 @@ fn spawn_player(
                 ) as usize,
             },
         ),
-        Transform::from_xyz(0.0, 0.0, 1.0)
-            .with_scale(Vec3::splat(2.0)),
+        Transform::from_xyz(0.0, 0.0, 1.0),
     ));
 
     // Attach session trace to player if telemetry is enabled
