@@ -181,7 +181,11 @@ fn spawn_map(
 
     for y in 0..map.height {
         for x in 0..map.width {
-            let tile_pos = TilePos { x, y };
+            // Map JSON rows are RPGMaker-ordered (row 0 = top), while
+            // bevy_ecs_tilemap's TilePos y=0 is the BOTTOM row, so the row
+            // must be flipped here or the whole map renders vertically
+            // mirrored. Same convention boundary as map_data::tile_to_world.
+            let tile_pos = TilePos { x, y: map.height - 1 - y };
             let index = (y * map.width + x) as usize;
 
             let ground_index = map.tiles.get(index).copied().unwrap_or(0);
@@ -240,6 +244,9 @@ fn spawn_map(
         Map,
     ));
 
+    // CollisionMap stays in RPGMaker orientation (y=0 = top row, same as the
+    // JSON), because every lookup goes through world_to_tile, which returns
+    // RPGMaker-orientation coordinates.
     let mut collision_map = CollisionMap::new(map.width, map.height);
     for y in 0..map.height {
         for x in 0..map.width {
@@ -291,6 +298,7 @@ fn spawn_map(
             Npc {
                 name: npc_data.name.clone(),
                 sprite_facing: facing_from_string(&npc_data.facing),
+                sprite_slot: npc_data.sprite_index,
             },
             NpcDialogue {
                 speaker: npc_data.dialogue.speaker.clone(),

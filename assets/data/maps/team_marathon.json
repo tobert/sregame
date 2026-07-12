@@ -1526,6 +1526,7 @@
       "x": 2,
       "y": 14,
       "sprite": "Monster",
+      "sprite_index": 2,
       "facing": "right",
       "dialogue": {
         "speaker": "Courage",
@@ -1542,6 +1543,7 @@
       "x": 20,
       "y": 9,
       "sprite": "People4",
+      "sprite_index": 0,
       "facing": "down",
       "dialogue": {
         "speaker": "Ocean",
@@ -1559,6 +1561,7 @@
       "x": 12,
       "y": 8,
       "sprite": "Nature",
+      "sprite_index": 4,
       "facing": "down",
       "dialogue": {
         "speaker": "Nyaanager Evie",
@@ -1576,6 +1579,7 @@
       "x": 20,
       "y": 13,
       "sprite": "People2",
+      "sprite_index": 5,
       "facing": "left",
       "dialogue": {
         "speaker": "Seventh Daughter of Nine",
@@ -1592,6 +1596,7 @@
       "x": 7,
       "y": 14,
       "sprite": "People2",
+      "sprite_index": 1,
       "facing": "left",
       "dialogue": {
         "speaker": "Luna",
@@ -1608,6 +1613,7 @@
       "x": 3,
       "y": 5,
       "sprite": "DrMcfire",
+      "sprite_index": 0,
       "facing": "down",
       "dialogue": {
         "speaker": "Doctor McFire",
@@ -1625,6 +1631,7 @@
       "x": 18,
       "y": 13,
       "sprite": "People3",
+      "sprite_index": 6,
       "facing": "right",
       "dialogue": {
         "speaker": "Hidaslo Xela",
@@ -1641,6 +1648,7 @@
       "x": 14,
       "y": 14,
       "sprite": "Mando",
+      "sprite_index": 0,
       "facing": "down",
       "dialogue": {
         "speaker": "Boba Jacobian",

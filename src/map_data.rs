@@ -8,8 +8,12 @@ pub struct MapData {
     pub name: String,
     pub width: u32,
     pub height: u32,
-    /// Ground-layer atlas indices, one per cell (row-major). Index 0 is a
-    /// reserved fully-transparent tile.
+    /// Ground-layer atlas indices, one per cell (row-major, RPGMaker
+    /// orientation: row 0 is the TOP row of the map, matching the source
+    /// Map*.json data planes). Index 0 is a reserved fully-transparent tile.
+    /// The top-down -> bottom-up (+y up) conversion happens exactly once, at
+    /// the world boundary: `tile_to_world`/`world_to_tile` here and the
+    /// `TilePos` mapping in tilemap.rs::spawn_map.
     pub tiles: Vec<u32>,
     /// Upper-layer (drawn above the player/NPCs) atlas indices into the
     /// *same* atlas as `tiles`, same shape as `tiles`. 0 means "no
@@ -48,6 +52,12 @@ pub struct NpcData {
     pub x: u32,
     pub y: u32,
     pub sprite: String,
+    /// Which character slot (0-7) of the `sprite` sheet this NPC uses -
+    /// RPGMaker MZ's `image.characterIndex` (sheets hold a 4x2 grid of
+    /// characters, see character_sheet.rs). Defaults to 0 (top-left slot)
+    /// for map JSON predating this field.
+    #[serde(default)]
+    pub sprite_index: u32,
     pub facing: String,
     pub dialogue: DialogueData,
 }
@@ -79,22 +89,31 @@ impl MapData {
     }
 }
 
+/// Converts a tile coordinate in RPGMaker orientation (y = 0 is the TOP row,
+/// y grows downward - the convention all map JSON, NPC, and exit data is
+/// stored in) to a Bevy world-space position (+y is up, map centered on the
+/// origin). This flip is deliberately done here and nowhere else; feeding
+/// unflipped tile y through (as an earlier version did) renders every map
+/// vertically mirrored.
 pub fn tile_to_world(tile_x: u32, tile_y: u32, map_width: u32, map_height: u32) -> Vec2 {
     const TILE_SIZE: f32 = 48.0;
 
     let world_x = (tile_x as f32 - map_width as f32 / 2.0) * TILE_SIZE + TILE_SIZE / 2.0;
-    let world_y = (tile_y as f32 - map_height as f32 / 2.0) * TILE_SIZE + TILE_SIZE / 2.0;
+    let flipped_y = map_height as f32 - 1.0 - tile_y as f32;
+    let world_y = (flipped_y - map_height as f32 / 2.0) * TILE_SIZE + TILE_SIZE / 2.0;
 
     Vec2::new(world_x, world_y)
 }
 
-/// Inverse of `tile_to_world`: maps a world-space position back to the tile
-/// coordinate that contains it, for a map of the given dimensions.
+/// Inverse of `tile_to_world`: maps a world-space position back to the
+/// RPGMaker-orientation tile coordinate (y = 0 at the top) that contains it,
+/// for a map of the given dimensions.
 pub fn world_to_tile(world_pos: Vec2, map_width: u32, map_height: u32) -> (i32, i32) {
     const TILE_SIZE: f32 = 48.0;
 
     let tile_x = (world_pos.x / TILE_SIZE + map_width as f32 / 2.0).floor() as i32;
-    let tile_y = (world_pos.y / TILE_SIZE + map_height as f32 / 2.0).floor() as i32;
+    let tile_y_bottom_up = (world_pos.y / TILE_SIZE + map_height as f32 / 2.0).floor() as i32;
+    let tile_y = map_height as i32 - 1 - tile_y_bottom_up;
 
     (tile_x, tile_y)
 }
@@ -160,6 +179,31 @@ mod tests {
                  through world space (got world {world:?})"
             );
         }
+    }
+
+    #[test]
+    fn tile_y_zero_is_the_top_of_the_world_map() {
+        // Map data is stored in RPGMaker orientation: row 0 is the TOP of
+        // the map. Bevy world space has +y up, so row 0 must land in the
+        // top (positive-y) half of the world and increasing tile y must
+        // move DOWN in world y. This is the regression test for the
+        // vertical-mirroring bug where every map rendered upside down
+        // (roofs below doors) because tile y was fed through unflipped.
+        let (width, height) = (34, 39);
+
+        let top_left = tile_to_world(0, 0, width, height);
+        assert!(top_left.x < 0.0, "tile x=0 should be on the left (got {top_left:?})");
+        assert!(top_left.y > 0.0, "tile y=0 should be at the TOP (got {top_left:?})");
+
+        let bottom_left = tile_to_world(0, height - 1, width, height);
+        assert!(bottom_left.y < 0.0, "last row should be at the BOTTOM (got {bottom_left:?})");
+
+        let one_down = tile_to_world(0, 1, width, height);
+        assert!(
+            one_down.y < top_left.y,
+            "increasing tile y must decrease world y ({} !< {})",
+            one_down.y, top_left.y
+        );
     }
 
     #[test]
@@ -252,6 +296,14 @@ mod tests {
                     missing.push(format!(
                         "{map_name}: NPC '{}' sprite '{}' -> assets/textures/characters/{}.png",
                         npc.name, npc.sprite, npc.sprite
+                    ));
+                }
+                if npc.sprite_index > 7 {
+                    missing.push(format!(
+                        "{map_name}: NPC '{}' sprite_index {} exceeds the 0-7 \
+                         character slots a sheet holds (character_sheet.rs \
+                         would panic at spawn)",
+                        npc.name, npc.sprite_index
                     ));
                 }
                 let portrait = &npc.dialogue.portrait;

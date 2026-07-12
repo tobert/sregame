@@ -293,6 +293,11 @@ def extract_npcs(rpg_data, source_filename=""):
             "x": event['x'],
             "y": event['y'],
             "sprite": image['characterName'] or override.get('synthetic_sprite'),
+            # Which character slot (0-7) of the sheet this event uses; the
+            # renderer slices the 4x2-character sheet with this (see
+            # src/character_sheet.rs). Dropping it renders every NPC as the
+            # sheet's top-left character.
+            "sprite_index": image['characterIndex'],
             "facing": convert_direction(image['direction']),
             "dialogue": {
                 "speaker": speaker,

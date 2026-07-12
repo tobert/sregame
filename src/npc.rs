@@ -26,6 +26,8 @@ impl Plugin for NpcPlugin {
 pub struct Npc {
     pub name: String,
     pub sprite_facing: NpcFacing,
+    /// Character slot (0-7) within the sprite sheet - see character_sheet.rs.
+    pub sprite_slot: u32,
 }
 
 #[derive(Clone, Copy, Reflect, Default)]
@@ -80,26 +82,13 @@ pub fn spawn_npc(
 ) -> Entity {
     let texture = sprite_handle;
 
-    let layout = TextureAtlasLayout::from_grid(
-        UVec2::new(48, 48),
-        3,
-        4,
-        None,
-        None,
-    );
-    let atlas_layout = texture_atlas_layouts.add(layout);
+    let atlas_layout = texture_atlas_layouts.add(crate::character_sheet::sheet_layout());
 
-    let sprite_index = npc_data.sprite_facing as usize * 3 + 1;
-
-    // Validate sprite index in debug mode
-    #[cfg(debug_assertions)]
-    {
-        let max_index = 3 * 4 - 1; // 3x4 grid = indices 0-11
-        if sprite_index > max_index {
-            error!("❌ NPC sprite index {} exceeds grid bounds (max {})",
-                sprite_index, max_index);
-        }
-    }
+    let sprite_index = crate::character_sheet::atlas_index(
+        npc_data.sprite_slot,
+        npc_data.sprite_facing as u32,
+        crate::character_sheet::STANDING_PATTERN,
+    ) as usize;
 
     // Add telemetry for NPC spawn
     if let Some(t) = tracer {

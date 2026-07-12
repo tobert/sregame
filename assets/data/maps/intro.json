@@ -677,6 +677,7 @@
       "x": 8,
       "y": 4,
       "sprite": "Amy-Walking",
+      "sprite_index": 0,
       "facing": "down",
       "dialogue": {
         "speaker": "Amy",

@@ -35,7 +35,7 @@ pub enum Facing {
 }
 
 impl Facing {
-    fn sprite_row(&self) -> usize {
+    fn sprite_row(&self) -> u32 {
         match self {
             Facing::Down => 0,
             Facing::Left => 1,
@@ -44,6 +44,9 @@ impl Facing {
         }
     }
 }
+
+/// Amy's slot in Amy-Walking.png (Actors.json: actor 1, characterIndex 0).
+const AMY_SLOT: u32 = 0;
 
 #[derive(Component)]
 pub struct AnimationState {
@@ -81,14 +84,7 @@ fn spawn_player(
     }
     let texture = game_assets.player_sprite.clone();
 
-    let layout = TextureAtlasLayout::from_grid(
-        UVec2::new(48, 48),
-        3,
-        4,
-        None,
-        None,
-    );
-    let atlas_layout = texture_atlas_layouts.add(layout);
+    let atlas_layout = texture_atlas_layouts.add(crate::character_sheet::sheet_layout());
 
     // Create session trace for this play session (if telemetry is enabled)
     let session_trace = tracer.as_ref().map(|t| PlayerSessionTrace::new(t));
@@ -108,7 +104,11 @@ fn spawn_player(
             texture,
             TextureAtlas {
                 layout: atlas_layout,
-                index: 1,
+                index: crate::character_sheet::atlas_index(
+                    AMY_SLOT,
+                    Facing::default().sprite_row(),
+                    crate::character_sheet::STANDING_PATTERN,
+                ) as usize,
             },
         ),
         Transform::from_xyz(0.0, 0.0, 1.0)
@@ -167,8 +167,6 @@ fn apply_movement(
     collision_map: Option<Res<CollisionMap>>,
     mut query: Query<(&Velocity, &mut Transform), With<Player>>,
 ) {
-    const TILE_SIZE: f32 = 48.0;
-
     for (velocity, mut transform) in &mut query {
         if velocity.0.length_squared() == 0.0 {
             continue;
@@ -180,8 +178,11 @@ fn apply_movement(
         let new_y = transform.translation.y + delta_y;
 
         let can_move = if let Some(collision_map) = &collision_map {
-            let tile_x = ((new_x / TILE_SIZE) + (collision_map.width as f32 / 2.0)) as i32;
-            let tile_y = ((new_y / TILE_SIZE) + (collision_map.height as f32 / 2.0)) as i32;
+            let (tile_x, tile_y) = crate::map_data::world_to_tile(
+                Vec2::new(new_x, new_y),
+                collision_map.width,
+                collision_map.height,
+            );
 
             collision_map.is_walkable(tile_x, tile_y)
         } else {
@@ -202,7 +203,11 @@ fn animate_player(
     for (mut anim_state, facing, mut sprite) in &mut query {
         if !anim_state.is_moving {
             if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = facing.sprite_row() * 3 + 1;
+                atlas.index = crate::character_sheet::atlas_index(
+                    AMY_SLOT,
+                    facing.sprite_row(),
+                    crate::character_sheet::STANDING_PATTERN,
+                ) as usize;
             }
             continue;
         }
@@ -213,7 +218,11 @@ fn animate_player(
             anim_state.current_frame = (anim_state.current_frame + 1) % 3;
 
             if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = facing.sprite_row() * 3 + anim_state.current_frame;
+                atlas.index = crate::character_sheet::atlas_index(
+                    AMY_SLOT,
+                    facing.sprite_row(),
+                    anim_state.current_frame as u32,
+                ) as usize;
             }
         }
     }

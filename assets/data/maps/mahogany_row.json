@@ -1439,6 +1439,7 @@
       "x": 16,
       "y": 5,
       "sprite": "Actor2",
+      "sprite_index": 5,
       "facing": "down",
       "dialogue": {
         "speaker": "Pandora",
@@ -1454,6 +1455,7 @@
       "x": 21,
       "y": 8,
       "sprite": "People4",
+      "sprite_index": 4,
       "facing": "down",
       "dialogue": {
         "speaker": "Robert Bob",
@@ -1469,6 +1471,7 @@
       "x": 22,
       "y": 5,
       "sprite": "SF_Actor1",
+      "sprite_index": 7,
       "facing": "left",
       "dialogue": {
         "speaker": "Directrix Tina",
@@ -1484,6 +1487,7 @@
       "x": 10,
       "y": 5,
       "sprite": "People3",
+      "sprite_index": 0,
       "facing": "down",
       "dialogue": {
         "speaker": "Cee Eeoh",
@@ -1501,6 +1505,7 @@
       "x": 4,
       "y": 5,
       "sprite": "People4",
+      "sprite_index": 6,
       "facing": "up",
       "dialogue": {
         "speaker": "Vee Peapod",
@@ -1517,6 +1522,7 @@
       "x": 5,
       "y": 9,
       "sprite": "Monster",
+      "sprite_index": 5,
       "facing": "up",
       "dialogue": {
         "speaker": "Mistress of Scrum",
@@ -1532,6 +1538,7 @@
       "x": 2,
       "y": 13,
       "sprite": "SF_Monster",
+      "sprite_index": 4,
       "facing": "right",
       "dialogue": {
         "speaker": "Mervin",

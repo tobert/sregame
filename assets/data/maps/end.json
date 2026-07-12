@@ -677,6 +677,7 @@
       "x": 5,
       "y": 6,
       "sprite": "Evil",
+      "sprite_index": 3,
       "facing": "down",
       "dialogue": {
         "speaker": "Dave",
@@ -695,6 +696,7 @@
       "x": 8,
       "y": 4,
       "sprite": "Nature",
+      "sprite_index": 1,
       "facing": "down",
       "dialogue": {
         "speaker": "Amy Tobey",
@@ -712,6 +714,7 @@
       "x": 5,
       "y": 7,
       "sprite": "Actor2",
+      "sprite_index": 3,
       "facing": "down",
       "dialogue": {
         "speaker": "Agi Lecoach",
@@ -731,6 +734,7 @@
       "x": 10,
       "y": 6,
       "sprite": "Actor1",
+      "sprite_index": 4,
       "facing": "down",
       "dialogue": {
         "speaker": "Glenn Gary",
@@ -749,6 +753,7 @@
       "x": 9,
       "y": 7,
       "sprite": "People4",
+      "sprite_index": 7,
       "facing": "down",
       "dialogue": {
         "speaker": "Frau Barella",
@@ -765,6 +770,7 @@
       "x": 4,
       "y": 7,
       "sprite": "casey",
+      "sprite_index": 0,
       "facing": "down",
       "dialogue": {
         "speaker": "Casey",
@@ -780,6 +786,7 @@
       "x": 12,
       "y": 8,
       "sprite": "Greg",
+      "sprite_index": 0,
       "facing": "down",
       "dialogue": {
         "speaker": "Managear Greg",
@@ -796,6 +803,7 @@
       "x": 6,
       "y": 7,
       "sprite": "People1",
+      "sprite_index": 5,
       "facing": "down",
       "dialogue": {
         "speaker": "Devo Pestorius",
@@ -812,6 +820,7 @@
       "x": 7,
       "y": 7,
       "sprite": "People1",
+      "sprite_index": 3,
       "facing": "down",
       "dialogue": {
         "speaker": "Polly Math",
@@ -828,6 +837,7 @@
       "x": 8,
       "y": 7,
       "sprite": "People1",
+      "sprite_index": 4,
       "facing": "down",
       "dialogue": {
         "speaker": "Cody",
@@ -843,6 +853,7 @@
       "x": 4,
       "y": 8,
       "sprite": "People2",
+      "sprite_index": 4,
       "facing": "down",
       "dialogue": {
         "speaker": "Cary Erguy",
@@ -859,6 +870,7 @@
       "x": 10,
       "y": 7,
       "sprite": "People1",
+      "sprite_index": 2,
       "facing": "down",
       "dialogue": {
         "speaker": "Tenchi",
@@ -876,6 +888,7 @@
       "x": 11,
       "y": 7,
       "sprite": "Actor2",
+      "sprite_index": 5,
       "facing": "down",
       "dialogue": {
         "speaker": "Pandora",
@@ -892,6 +905,7 @@
       "x": 9,
       "y": 8,
       "sprite": "People3",
+      "sprite_index": 0,
       "facing": "down",
       "dialogue": {
         "speaker": "Cee Eeoh",
@@ -909,6 +923,7 @@
       "x": 12,
       "y": 7,
       "sprite": "People4",
+      "sprite_index": 6,
       "facing": "down",
       "dialogue": {
         "speaker": "Vee Peapod",
@@ -924,6 +939,7 @@
       "x": 11,
       "y": 8,
       "sprite": "Monster",
+      "sprite_index": 5,
       "facing": "down",
       "dialogue": {
         "speaker": "Mistress of Scrum",
@@ -939,6 +955,7 @@
       "x": 10,
       "y": 8,
       "sprite": "SF_Monster",
+      "sprite_index": 4,
       "facing": "down",
       "dialogue": {
         "speaker": "Gantt",
@@ -955,6 +972,7 @@
       "x": 11,
       "y": 6,
       "sprite": "SF_Actor1",
+      "sprite_index": 5,
       "facing": "down",
       "dialogue": {
         "speaker": "Desi Goner",
@@ -971,6 +989,7 @@
       "x": 6,
       "y": 8,
       "sprite": "People4",
+      "sprite_index": 4,
       "facing": "down",
       "dialogue": {
         "speaker": "Robert Bob",
@@ -986,6 +1005,7 @@
       "x": 5,
       "y": 8,
       "sprite": "SF_Actor1",
+      "sprite_index": 7,
       "facing": "down",
       "dialogue": {
         "speaker": "The Director",
@@ -1003,6 +1023,7 @@
       "x": 7,
       "y": 8,
       "sprite": "Monster",
+      "sprite_index": 7,
       "facing": "down",
       "dialogue": {
         "speaker": "The Boss",
@@ -1020,6 +1041,7 @@
       "x": 8,
       "y": 8,
       "sprite": "Monster",
+      "sprite_index": 1,
       "facing": "down",
       "dialogue": {
         "speaker": "Tenex",
@@ -1038,6 +1060,7 @@
       "x": 6,
       "y": 6,
       "sprite": "Actor3",
+      "sprite_index": 3,
       "facing": "down",
       "dialogue": {
         "speaker": "Shelly the Intern",
@@ -1054,6 +1077,7 @@
       "x": 7,
       "y": 6,
       "sprite": "SF_Actor2",
+      "sprite_index": 3,
       "facing": "down",
       "dialogue": {
         "speaker": "Leah Dev",
@@ -1072,6 +1096,7 @@
       "x": 8,
       "y": 6,
       "sprite": "SF_Actor3",
+      "sprite_index": 2,
       "facing": "down",
       "dialogue": {
         "speaker": "Merc",
@@ -1088,6 +1113,7 @@
       "x": 9,
       "y": 6,
       "sprite": "SF_Actor1",
+      "sprite_index": 4,
       "facing": "down",
       "dialogue": {
         "speaker": "Kirito",
@@ -1105,6 +1131,7 @@
       "x": 11,
       "y": 9,
       "sprite": "Monster",
+      "sprite_index": 2,
       "facing": "down",
       "dialogue": {
         "speaker": "Rick",
@@ -1120,6 +1147,7 @@
       "x": 6,
       "y": 9,
       "sprite": "People2",
+      "sprite_index": 5,
       "facing": "down",
       "dialogue": {
         "speaker": "Seventh Daughter of Nine",
@@ -1137,6 +1165,7 @@
       "x": 7,
       "y": 9,
       "sprite": "People3",
+      "sprite_index": 6,
       "facing": "down",
       "dialogue": {
         "speaker": "Hidaslo Xela",
@@ -1152,6 +1181,7 @@
       "x": 8,
       "y": 9,
       "sprite": "Nature",
+      "sprite_index": 4,
       "facing": "down",
       "dialogue": {
         "speaker": "Nyaanager Evie",
@@ -1168,6 +1198,7 @@
       "x": 9,
       "y": 9,
       "sprite": "People4",
+      "sprite_index": 0,
       "facing": "down",
       "dialogue": {
         "speaker": "Ocean",
@@ -1185,6 +1216,7 @@
       "x": 10,
       "y": 9,
       "sprite": "People2",
+      "sprite_index": 1,
       "facing": "down",
       "dialogue": {
         "speaker": "Luna",
@@ -1201,6 +1233,7 @@
       "x": 5,
       "y": 9,
       "sprite": "DrMcfire",
+      "sprite_index": 0,
       "facing": "down",
       "dialogue": {
         "speaker": "Doctor McFire",

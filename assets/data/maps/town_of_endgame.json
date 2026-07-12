@@ -3992,6 +3992,7 @@
       "x": 9,
       "y": 7,
       "sprite": "Mando",
+      "sprite_index": 0,
       "facing": "down",
       "dialogue": {
         "speaker": "Boba Jacobian",
@@ -4007,6 +4008,7 @@
       "x": 24,
       "y": 9,
       "sprite": "SF_Actor1",
+      "sprite_index": 5,
       "facing": "left",
       "dialogue": {
         "speaker": "Desi Goner",
@@ -4023,6 +4025,7 @@
       "x": 4,
       "y": 2,
       "sprite": "People1",
+      "sprite_index": 2,
       "facing": "down",
       "dialogue": {
         "speaker": "Tenchi Reader",
@@ -4040,6 +4043,7 @@
       "x": 21,
       "y": 21,
       "sprite": "Monster",
+      "sprite_index": 2,
       "facing": "down",
       "dialogue": {
         "speaker": "Courage",
@@ -4056,6 +4060,7 @@
       "x": 21,
       "y": 7,
       "sprite": "casey",
+      "sprite_index": 0,
       "facing": "down",
       "dialogue": {
         "speaker": "Casey",
@@ -4071,6 +4076,7 @@
       "x": 18,
       "y": 32,
       "sprite": "People1",
+      "sprite_index": 7,
       "facing": "right",
       "dialogue": {
         "speaker": "Nanny Ogg Vorbis",
@@ -4087,6 +4093,7 @@
       "x": 16,
       "y": 7,
       "sprite": "Actor1",
+      "sprite_index": 4,
       "facing": "down",
       "dialogue": {
         "speaker": "Glenn Gary",
@@ -4106,6 +4113,7 @@
       "x": 14,
       "y": 13,
       "sprite": "Actor2",
+      "sprite_index": 3,
       "facing": "right",
       "dialogue": {
         "speaker": "Agi Lecoach",
@@ -4125,6 +4133,7 @@
       "x": 14,
       "y": 18,
       "sprite": "Evil",
+      "sprite_index": 3,
       "facing": "down",
       "dialogue": {
         "speaker": "Paws Alljohn",
@@ -4142,6 +4151,7 @@
       "x": 27,
       "y": 13,
       "sprite": "SF_Monster",
+      "sprite_index": 4,
       "facing": "down",
       "dialogue": {
         "speaker": "Johnny Mnemomena",
@@ -4158,6 +4168,7 @@
       "x": 18,
       "y": 13,
       "sprite": "People4",
+      "sprite_index": 7,
       "facing": "left",
       "dialogue": {
         "speaker": "Frau Barella",

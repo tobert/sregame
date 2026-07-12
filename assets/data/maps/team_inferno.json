@@ -1670,6 +1670,7 @@
       "x": 20,
       "y": 9,
       "sprite": "Actor3",
+      "sprite_index": 3,
       "facing": "down",
       "dialogue": {
         "speaker": "Shelly the Intern",
@@ -1687,6 +1688,7 @@
       "x": 5,
       "y": 5,
       "sprite": "SF_Actor2",
+      "sprite_index": 3,
       "facing": "down",
       "dialogue": {
         "speaker": "Leah Dev",
@@ -1705,6 +1707,7 @@
       "x": 20,
       "y": 16,
       "sprite": "SF_Actor1",
+      "sprite_index": 4,
       "facing": "left",
       "dialogue": {
         "speaker": "Kirito",
@@ -1722,6 +1725,7 @@
       "x": 8,
       "y": 14,
       "sprite": "Monster",
+      "sprite_index": 1,
       "facing": "down",
       "dialogue": {
         "speaker": "Tenex",
@@ -1739,6 +1743,7 @@
       "x": 14,
       "y": 14,
       "sprite": "Monster",
+      "sprite_index": 7,
       "facing": "down",
       "dialogue": {
         "speaker": "The Boss",
@@ -1755,6 +1760,7 @@
       "x": 17,
       "y": 5,
       "sprite": "SF_Actor3",
+      "sprite_index": 2,
       "facing": "down",
       "dialogue": {
         "speaker": "Merc",

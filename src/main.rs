@@ -10,6 +10,7 @@ use std::time::Duration;
 
 mod game_state;
 mod assets;
+mod character_sheet;
 mod player;
 mod camera;
 mod tilemap;
