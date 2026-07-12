@@ -124,6 +124,7 @@ fn spawn_player(
         Velocity(Vec2::ZERO),
         Facing::default(),
         AnimationState::default(),
+        crate::depth::YSorted { foot_offset: -24.0 },
         Sprite::from_atlas_image(
             texture,
             TextureAtlas {
@@ -198,8 +199,11 @@ fn apply_movement(
     time: Res<Time>,
     collision_map: Option<Res<CollisionMap>>,
     mut query: Query<(&Velocity, &mut Transform), With<Player>>,
+    npcs: Query<&Transform, (With<crate::npc::Npc>, Without<Player>)>,
     mut bumps: MessageWriter<BumpedIntoTile>,
 ) {
+    let npc_centers: Vec<Vec2> = npcs.iter().map(|t| t.translation.truncate()).collect();
+
     for (velocity, mut transform) in &mut query {
         if velocity.0.length_squared() == 0.0 {
             continue;
@@ -221,7 +225,7 @@ fn apply_movement(
             let candidate = position + axis_delta;
 
             let allowed = if let Some(collision_map) = &collision_map {
-                match try_axis_move(collision_map, position, candidate, COLLIDER_HALF) {
+                match try_axis_move(collision_map, position, candidate, COLLIDER_OFFSET, COLLIDER_HALF) {
                     Ok(()) => true,
                     Err((tile_x, tile_y)) => {
                         bumps.write(BumpedIntoTile { tile_x, tile_y });
@@ -230,7 +234,7 @@ fn apply_movement(
                 }
             } else {
                 true
-            };
+            } && !npc_blocks_move(&npc_centers, position, candidate);
 
             if allowed {
                 position = candidate;
@@ -242,6 +246,35 @@ fn apply_movement(
     }
 }
 
+/// NPC body collider half-extents/offset, relative to the NPC's translation
+/// (its tile center). NPCs used to bake their whole 48px tile into the
+/// CollisionMap, which read as a boundary "wider than it needs to be while
+/// also shorter than it should be" (Amy's Team Disco entrance report): a
+/// full-tile block stops the player ~8px of daylight away sideways, yet
+/// vertically the short player box let the sprites overlap head-to-feet.
+/// This box is body-shaped instead: 32px wide so bodies stop just about
+/// touching; bottom edge at the NPC's feet (-24) so a player approaching
+/// from the south stops close and renders in front (depth.rs); top edge at
+/// +16 so a player approaching from the north keeps their feet off the
+/// NPC's head while their lower body may overlap behind it.
+const NPC_COLLIDER_HALF: Vec2 = Vec2::new(16.0, 20.0);
+const NPC_COLLIDER_OFFSET: Vec2 = Vec2::new(0.0, -4.0);
+
+/// True when the candidate position would push the player's collision box
+/// into an NPC body it isn't already overlapping. The "already overlapping"
+/// escape hatch means a player who somehow ends up inside an NPC (a scene
+/// spawn point on a body, a future moving NPC walking into them) can always
+/// walk out instead of being wedged forever.
+fn npc_blocks_move(npc_centers: &[Vec2], position: Vec2, candidate: Vec2) -> bool {
+    let overlaps = |player_center: Vec2, npc_center: Vec2| {
+        let gap = ((player_center + COLLIDER_OFFSET) - (npc_center + NPC_COLLIDER_OFFSET)).abs();
+        gap.x < COLLIDER_HALF.x + NPC_COLLIDER_HALF.x && gap.y < COLLIDER_HALF.y + NPC_COLLIDER_HALF.y
+    };
+    npc_centers
+        .iter()
+        .any(|&npc| overlaps(candidate, npc) && !overlaps(position, npc))
+}
+
 /// Collision box half-extents. The sprite is 48px square, but colliding its
 /// full extent would snag on every doorframe; colliding only the center
 /// point (as an earlier version did) buried the sprite 24px deep into wall
@@ -249,7 +282,17 @@ fn apply_movement(
 /// panels" report, confirmed by the 2026-07-12 kaibo review. A slightly
 /// narrow box keeps the body out of walls while slipping through one-tile
 /// doorways comfortably.
-const COLLIDER_HALF: Vec2 = Vec2::new(14.0, 12.0);
+const COLLIDER_HALF: Vec2 = Vec2::new(14.0, 8.0);
+
+/// The box is anchored at the sprite's FEET, not its center: it spans
+/// y in [-24, -8] relative to the sprite. A center-anchored box let the
+/// legs render 12px inside the top half of wall bands when walking south
+/// against them (Amy's item-shop report, take two); with the box bottom
+/// flush with the sprite bottom, walking south stops with zero overlap,
+/// and walking north lets the head overlap a wall FACE - which reads as
+/// standing in front of the wall, the perspective a top-down interior
+/// implies. Overlaps between characters are depth-sorted (see depth.rs).
+const COLLIDER_OFFSET: Vec2 = Vec2::new(0.0, -16.0);
 
 /// Attempts one axis-aligned sub-tile move of the collision box: the two
 /// leading corners each check their own tile crossing through canPass.
@@ -258,15 +301,22 @@ fn try_axis_move(
     map: &CollisionMap,
     position: Vec2,
     candidate: Vec2,
+    offset: Vec2,
     half: Vec2,
 ) -> Result<(), (i32, i32)> {
     let delta = candidate - position;
     let probes: [Vec2; 2] = if delta.x != 0.0 {
-        let lead_x = half.x.copysign(delta.x);
-        [Vec2::new(lead_x, -half.y), Vec2::new(lead_x, half.y)]
+        let lead_x = offset.x + half.x.copysign(delta.x);
+        [
+            Vec2::new(lead_x, offset.y - half.y),
+            Vec2::new(lead_x, offset.y + half.y),
+        ]
     } else {
-        let lead_y = half.y.copysign(delta.y);
-        [Vec2::new(-half.x, lead_y), Vec2::new(half.x, lead_y)]
+        let lead_y = offset.y + half.y.copysign(delta.y);
+        [
+            Vec2::new(offset.x - half.x, lead_y),
+            Vec2::new(offset.x + half.x, lead_y),
+        ]
     };
 
     for probe in probes {
@@ -328,26 +378,43 @@ mod tests {
 
     #[test]
     fn box_corners_stop_at_wall_sides_where_center_point_slipped_past() {
-        // Player in tile (0,1) (world x approx -48..0 band on a 3x3 map),
-        // vertically offset so the CENTER sits in row (0,0)'s band but the
-        // lower corner hangs into row 1 - moving right, the old
-        // center-point check would pass (center crosses into open (1,0))
-        // while the sprite's lower half visibly clipped into the (1,1)
-        // wall. The corner probe must refuse.
-        let map = map_with_wall();
         // 3x3 map: tile (1,1) center is world (0,0), tiles 48px, so column
-        // 1 spans x in [-24, 24] and row 1 spans y in [-24, 24].
+        // 1 spans x in [-24, 24], row 0 spans y in [24, 72], row 1 spans
+        // y in [-24, 24].
         //
-        // Center at y=+18: the center's own row is 0 (open), but the lower
-        // corner (y-12 = +6) hangs into blocked row 1. Moving right, the
-        // leading corner (x+14) crosses the column boundary at x=-24
-        // (center crossing x=-38): the old center-point check would happily
-        // continue until the center itself crossed at x=-24, burying the
-        // sprite 14px+ deep into the wall.
-        let from = Vec2::new(-40.0, 18.0);
-        let to = Vec2::new(-37.0, 18.0); // corner moves -26 -> -23: crosses into column 1
-        let result = try_axis_move(&map, from, to, COLLIDER_HALF);
+        // The feet box spans y in [center-24, center-8]. Sprite center at
+        // y=+40 puts the box straddling the row 0/1 boundary: top corner
+        // (y=32) in open row 0, bottom corner (y=16) hanging into blocked
+        // row 1. Moving right, the leading edge (x+14) crosses the column
+        // boundary at x=-24 - the old center-point check would happily
+        // continue until the center itself crossed, burying the sprite
+        // 14px+ deep into the wall. The corner probe must refuse.
+        let map = map_with_wall();
+        let from = Vec2::new(-40.0, 40.0);
+        let to = Vec2::new(-37.0, 40.0); // leading edge -26 -> -23: crosses into column 1
+        let result = try_axis_move(&map, from, to, COLLIDER_OFFSET, COLLIDER_HALF);
         assert_eq!(result, Err((1, 1)), "lower-leading corner must hit the wall");
+    }
+
+    #[test]
+    fn walking_south_stops_with_feet_flush_on_the_wall_top() {
+        // Amy's item-shop report, take two: walking south against a
+        // partition, the old center-anchored box stopped with the sprite's
+        // legs 12px inside the wall's top half. The feet-anchored box must
+        // stop with the sprite bottom (center - 24) exactly on the wall's
+        // top edge (y=24 for the (1,1) wall) - flush, zero overlap.
+        let map = map_with_wall();
+        let flush = Vec2::new(0.0, 48.0); // sprite bottom at exactly y=24
+        assert_eq!(
+            try_axis_move(&map, Vec2::new(0.0, 52.0), flush, COLLIDER_OFFSET, COLLIDER_HALF),
+            Ok(()),
+            "descending TO the flush position must be allowed"
+        );
+        assert_eq!(
+            try_axis_move(&map, flush, Vec2::new(0.0, 44.0), COLLIDER_OFFSET, COLLIDER_HALF),
+            Err((1, 1)),
+            "descending PAST the flush position must be refused"
+        );
     }
 
     #[test]
@@ -358,25 +425,73 @@ mod tests {
         map.set_tile(1, 0, TileCollision::Blocked);
         map.set_tile(1, 2, TileCollision::Blocked);
 
-        // Walk right through the doorway row: tile (1,1) center is (0,0).
+        // Walk right through the doorway row: tile (1,1) center is (0,0),
+        // and a sprite standing dead-center has its feet box (y in
+        // [-24, -8]) entirely inside the doorway row.
         let from = Vec2::new(-30.0, 0.0);
         let to = Vec2::new(-20.0, 0.0);
-        assert_eq!(try_axis_move(&map, from, to, COLLIDER_HALF), Ok(()));
+        assert_eq!(try_axis_move(&map, from, to, COLLIDER_OFFSET, COLLIDER_HALF), Ok(()));
     }
 
     #[test]
-    fn box_blocked_when_off_center_in_doorway() {
-        // Same doorway, but hugging the doorway's top edge so the upper
-        // corner would cross into the blocked (1,0): refused.
+    fn box_blocked_when_feet_hang_into_the_doorway_frame() {
+        // Same doorway, but riding high enough that the box's top corner
+        // (center - 8) is inside the blocked (1,0) row band (y >= 24):
+        // refused.
         let mut map = CollisionMap::new(3, 3);
         map.set_tile(1, 0, TileCollision::Blocked);
         map.set_tile(1, 2, TileCollision::Blocked);
 
-        // Center at y=16: upper corner (y+12 = 28) is in blocked row 0.
-        // Leading corner (x+14) crosses the column-1 boundary at x=-24 when
-        // the move goes -42 -> -36 (corner -28 -> -22).
-        let from = Vec2::new(-42.0, 16.0);
-        let to = Vec2::new(-36.0, 16.0);
-        assert_eq!(try_axis_move(&map, from, to, COLLIDER_HALF), Err((1, 0)));
+        // Center at y=34: top corner y=26 is in blocked row 0. Leading
+        // corner (x+14) crosses the column-1 boundary at x=-24 when the
+        // move goes -42 -> -36 (corner -28 -> -22).
+        let from = Vec2::new(-42.0, 34.0);
+        let to = Vec2::new(-36.0, 34.0);
+        assert_eq!(try_axis_move(&map, from, to, COLLIDER_OFFSET, COLLIDER_HALF), Err((1, 0)));
+    }
+
+    #[test]
+    fn npc_body_stops_sideways_approach_where_bodies_touch() {
+        // NPC at the origin: its body box spans x in [-16, 16]. The player
+        // box (half-width 14) must stop with centers 30px apart - bodies
+        // visually touching - instead of the full-tile 38px the old
+        // CollisionMap bake enforced ("wider than it needs to be").
+        let npc = vec![Vec2::ZERO];
+        let from = Vec2::new(-32.0, 0.0);
+        assert!(!npc_blocks_move(&npc, from, Vec2::new(-30.5, 0.0)));
+        assert!(npc_blocks_move(&npc, from, Vec2::new(-29.0, 0.0)));
+    }
+
+    #[test]
+    fn npc_body_stops_vertical_approaches_at_body_height() {
+        // "...while also being shorter than it should be": the old
+        // full-tile bake plus the short player box let the sprites overlap
+        // head-to-feet vertically. The body box spans y in [-24, 16]
+        // around the NPC: from the south the player stops with centers 16px
+        // apart (close, rendering in front via y-sort); from the north the
+        // player's feet (center - 24) stop on the box top (y=16), off the
+        // NPC's head.
+        let npc = vec![Vec2::ZERO];
+
+        // From the south: blocked once the player center passes y=-16.
+        let from_south = Vec2::new(0.0, -20.0);
+        assert!(!npc_blocks_move(&npc, from_south, Vec2::new(0.0, -17.0)));
+        assert!(npc_blocks_move(&npc, from_south, Vec2::new(0.0, -14.0)));
+
+        // From the north: blocked once the player center passes y=40.
+        let from_north = Vec2::new(0.0, 44.0);
+        assert!(!npc_blocks_move(&npc, from_north, Vec2::new(0.0, 41.0)));
+        assert!(npc_blocks_move(&npc, from_north, Vec2::new(0.0, 38.0)));
+    }
+
+    #[test]
+    fn player_already_inside_an_npc_can_always_walk_out() {
+        // The escape hatch: a player overlapping an NPC body (bad spawn
+        // point, future moving NPCs) must never be wedged - moves are only
+        // refused when they'd create a NEW overlap.
+        let npc = vec![Vec2::ZERO];
+        let inside = Vec2::new(0.0, 0.0);
+        assert!(!npc_blocks_move(&npc, inside, Vec2::new(0.0, -6.0)));
+        assert!(!npc_blocks_move(&npc, inside, Vec2::new(6.0, 0.0)));
     }
 }

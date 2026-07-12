@@ -20,6 +20,7 @@ mod semantic_state;
 mod telemetry;
 mod instrumentation;
 mod transitions;
+mod depth;
 
 use game_state::{GameState, GameStatePlugin, Mode, Scene};
 use assets::AssetsPlugin;
@@ -31,6 +32,7 @@ use npc::NpcPlugin;
 use viewport::SemanticViewportPlugin;
 use semantic_state::SemanticStatePlugin;
 use transitions::TransitionsPlugin;
+use depth::DepthPlugin;
 
 /// The Endgame of SRE - An educational game about Site Reliability Engineering
 #[derive(Parser, Debug, Clone, Resource)]
@@ -205,6 +207,7 @@ fn main() {
             SemanticViewportPlugin,
             SemanticStatePlugin,
             TransitionsPlugin,
+            DepthPlugin,
         ))
         .add_systems(Startup, setup)
         .add_systems(OnEnter(GameState::Playing), on_enter_playing)

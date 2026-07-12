@@ -173,6 +173,7 @@ pub fn spawn_npc(
         frames,
         dialogue,
         Interactable::default(),
+        crate::depth::YSorted { foot_offset: -24.0 },
         Sprite::from_atlas_image(
             texture,
             TextureAtlas {

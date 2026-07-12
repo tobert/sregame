@@ -342,14 +342,13 @@ fn spawn_map(
     for prop in map.props.iter().filter(|p| p.blocks) {
         collision_map.set_tile(prop.x, prop.y, TileCollision::Blocked);
     }
-    // NPCs block their tile the same way (verified against the original:
-    // every NPC event is priority 1 / through=false; only doggo is
-    // through, and doggo is a prop). NPCs never move, so baking their
-    // spawn tile is exact. Interaction is unaffected: the E-key radius
-    // (64px) spans the blocked tile from the one you stop in.
-    for npc in &map.npcs {
-        collision_map.set_tile(npc.x, npc.y, TileCollision::Blocked);
-    }
+    // NPCs deliberately do NOT bake into the tile map (they used to):
+    // a full-tile block read as a boundary wider than the NPC's body yet
+    // short enough for sprites to overlap vertically. They collide as
+    // body-shaped AABBs against the player instead - see npc_blocks_move
+    // in player.rs. (Verified against the original: every NPC event is
+    // priority 1 / through=false; only doggo is through, and doggo is a
+    // prop.)
     commands.insert_resource(collision_map);
     commands.insert_resource(MapExits(map.exits.clone()));
 
@@ -483,6 +482,9 @@ fn spawn_map(
             Sprite::from_atlas_image(handle, TextureAtlas { layout, index }),
             Transform::from_xyz(world_pos.x, world_pos.y + y_offset, 0.95),
             crate::npc::CharacterFrames { slot: prop.sprite_index, facing_row },
+            // Feet at the tile the prop stands on, not its lifted center -
+            // a 48x96 truck must y-sort by its ground line (see depth.rs).
+            crate::depth::YSorted { foot_offset: -(prop.frame_height as f32) / 2.0 },
             Map,
         ));
         if prop.step_anime {
