@@ -922,7 +922,8 @@
       "target_scene": "TownOfEndgame",
       "target_spawn_x": 16,
       "target_spawn_y": 23,
-      "trigger": "touch"
+      "trigger": "touch",
+      "dialogue": []
     }
   ],
   "doors": [],

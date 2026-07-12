@@ -119,6 +119,25 @@ pub struct ExitData {
     /// Defaults to Touch for map JSON predating this field.
     #[serde(default)]
     pub trigger: ExitTrigger,
+    /// Scripted scene played before the transfer fires (empty for plain
+    /// exits). Each segment is one RPGMaker message box with its own
+    /// speaker/portrait - Map009's "retro dialog" retrospective is the
+    /// motivating case.
+    #[serde(default)]
+    pub dialogue: Vec<DialogueSegmentData>,
+}
+
+/// One message box of a scripted scene: RPGMaker code-101 parameters plus
+/// the box's joined 401 text.
+#[derive(Debug, Clone, Deserialize)]
+pub struct DialogueSegmentData {
+    pub speaker: String,
+    /// Face sheet name (empty = no portrait), resolved against
+    /// assets/textures/portraits/<name>.png at display time.
+    pub portrait: String,
+    #[serde(default)]
+    pub face_index: u32,
+    pub text: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -395,6 +414,20 @@ mod tests {
                 }
             }
 
+            for exit in &map.exits {
+                for seg in &exit.dialogue {
+                    if !seg.portrait.is_empty()
+                        && !portraits_dir.join(format!("{}.png", seg.portrait)).exists()
+                    {
+                        missing.push(format!(
+                            "{map_name}: exit scene speaker '{}' portrait '{}' -> \
+                             assets/textures/portraits/{}.png",
+                            seg.speaker, seg.portrait, seg.portrait
+                        ));
+                    }
+                }
+            }
+
             for door in &map.doors {
                 if !characters_dir.join(format!("{}.png", door.sprite)).exists() {
                     missing.push(format!(
@@ -437,6 +470,18 @@ mod tests {
         );
         let idx = (2 * map.width + 23) as usize;
         assert_eq!(map.passability[idx], 0b0101, "town (23,2) should be down|right one-way");
+    }
+
+    #[test]
+    fn shipped_interior_wall_tops_are_fully_blocked() {
+        // Team Disco (3,7) is an A4 wall-top ("ceiling") cell. VisuStella
+        // flags leave wall tops side-enterable via partition doorway gaps
+        // (engine-faithful, looks like clipping through the wall panel) -
+        // the converter force-blocks them. Regression test for the item
+        // shop side-clip report.
+        let map = MapData::load("team_disco").expect("shipped disco should load");
+        let idx = (7 * map.width + 3) as usize;
+        assert_eq!(map.passability[idx], 0, "wall-top cells must be sealed");
     }
 
     #[test]

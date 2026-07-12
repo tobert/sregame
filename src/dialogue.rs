@@ -20,14 +20,24 @@ impl Plugin for DialoguePlugin {
     }
 }
 
+/// One message box: its own speaker and portrait. A plain NPC conversation
+/// is a run of segments sharing one speaker; a scripted scene (the retro
+/// retrospective) switches speaker/portrait between segments.
+#[derive(Clone)]
+pub struct DialogueSegment {
+    pub speaker: String,
+    /// Asset path like "textures/portraits/Nature.png"; empty = no portrait.
+    /// Paths (not handles) so senders don't need an AssetServer - the UI
+    /// resolves them when each segment is shown.
+    pub portrait_path: String,
+    /// Which cell of the face sheet to crop - see FACE_SHEET_* below.
+    pub portrait_face_index: u32,
+    pub text: String,
+}
+
 #[derive(Message)]
 pub struct StartDialogueEvent {
-    pub speaker: String,
-    pub portrait: Option<Handle<Image>>,
-    /// Which cell of `portrait`'s face sheet to crop and display - see
-    /// `NpcDialogue::portrait_face_index` in npc.rs.
-    pub portrait_face_index: u32,
-    pub lines: Vec<String>,
+    pub segments: Vec<DialogueSegment>,
 }
 
 /// RPGMaker MZ face sheets are always a 4-column x 2-row grid of 144x144px
@@ -80,55 +90,62 @@ impl TypewriterEffect {
 
 #[derive(Resource)]
 pub struct DialogueQueue {
-    speaker: String,
-    portrait: Option<Handle<Image>>,
-    portrait_face_index: u32,
-    lines: Vec<String>,
-    current_line: usize,
+    segments: Vec<DialogueSegment>,
+    current: usize,
+    /// One shared face-sheet atlas layout for the whole conversation
+    /// (created by spawn_dialogue_ui) so segment changes don't mint a new
+    /// layout asset per box.
+    face_layout: Option<Handle<TextureAtlasLayout>>,
 }
 
 impl DialogueQueue {
-    fn new(
-        speaker: String,
-        portrait: Option<Handle<Image>>,
-        portrait_face_index: u32,
-        lines: Vec<String>,
-    ) -> Self {
-        Self {
-            speaker,
-            portrait,
-            portrait_face_index,
-            lines,
-            current_line: 0,
-        }
+    fn new(segments: Vec<DialogueSegment>) -> Self {
+        Self { segments, current: 0, face_layout: None }
     }
 
-    fn current_text(&self) -> Option<String> {
-        self.lines.get(self.current_line).cloned()
+    fn current_segment(&self) -> Option<&DialogueSegment> {
+        self.segments.get(self.current)
     }
 
     fn advance(&mut self) -> bool {
-        self.current_line += 1;
-        self.current_line < self.lines.len()
+        self.current += 1;
+        self.current < self.segments.len()
     }
 }
 
 fn spawn_dialogue_ui(
     mut commands: Commands,
     game_assets: Res<GameAssets>,
-    dialogue_queue: Option<Res<DialogueQueue>>,
+    asset_server: Res<AssetServer>,
+    dialogue_queue: Option<ResMut<DialogueQueue>>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
-    info!("🎨 spawn_dialogue_ui called");
-
-    if dialogue_queue.is_none() {
+    let Some(mut queue) = dialogue_queue else {
         error!("❌ DialogueQueue resource not found!");
         return;
-    }
-
-    info!("✅ DialogueQueue found, spawning UI");
+    };
 
     let font = game_assets.dialogue_font.clone();
+
+    // Face sheets are a grid of cells, not one portrait each (see
+    // FACE_SHEET_* docs above) - render only the segment's own cell via a
+    // texture atlas, the same idiom npc.rs::spawn_npc uses for walk-sprite
+    // sheets. One layout serves every segment of the conversation.
+    let atlas_layout = texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
+        FACE_SHEET_CELL_SIZE,
+        FACE_SHEET_COLUMNS,
+        FACE_SHEET_ROWS,
+        None,
+        None,
+    ));
+    queue.face_layout = Some(atlas_layout.clone());
+
+    let first = queue.current_segment().cloned().unwrap_or(DialogueSegment {
+        speaker: "Unknown".into(),
+        portrait_path: String::new(),
+        portrait_face_index: 0,
+        text: String::new(),
+    });
 
     commands.spawn((
         DialogueRoot,
@@ -147,56 +164,20 @@ fn spawn_dialogue_ui(
         BorderColor::all(Color::WHITE),
     ))
     .with_children(|parent| {
-        let portrait_handle = dialogue_queue
-            .as_ref()
-            .and_then(|queue| queue.portrait.clone());
-
-        if let Some(portrait) = portrait_handle {
-            // Face sheets are a grid of cells, not one portrait each (see
-            // FACE_SHEET_* docs above) - render only the NPC's own cell via
-            // a texture atlas, the same idiom npc.rs::spawn_npc already uses
-            // for character walk-sprite sheets.
-            let face_index = dialogue_queue
-                .as_ref()
-                .map(|queue| queue.portrait_face_index)
-                .unwrap_or(0) as usize;
-
-            #[cfg(debug_assertions)]
-            {
-                let max_index = (FACE_SHEET_COLUMNS * FACE_SHEET_ROWS - 1) as usize;
-                if face_index > max_index {
-                    error!(
-                        "❌ Portrait face_index {} exceeds face sheet grid bounds (max {})",
-                        face_index, max_index
-                    );
-                }
-            }
-
-            let layout = TextureAtlasLayout::from_grid(
-                FACE_SHEET_CELL_SIZE,
-                FACE_SHEET_COLUMNS,
-                FACE_SHEET_ROWS,
-                None,
-                None,
-            );
-            let atlas_layout = texture_atlas_layouts.add(layout);
-
-            parent.spawn((
-                PortraitNode,
-                ImageNode::from_atlas_image(
-                    portrait,
-                    TextureAtlas {
-                        layout: atlas_layout,
-                        index: face_index,
-                    },
-                ),
-                Node {
-                    width: Val::Px(128.0),
-                    height: Val::Px(128.0),
-                    ..default()
-                },
-            ));
-        }
+        // The portrait node always exists so later segments can swap faces
+        // in (or hide it) without re-spawning UI - Display::None when the
+        // current segment has no portrait.
+        let (image_node, display) = portrait_for_segment(&first, &asset_server, &atlas_layout);
+        parent.spawn((
+            PortraitNode,
+            image_node,
+            Node {
+                width: Val::Px(128.0),
+                height: Val::Px(128.0),
+                display,
+                ..default()
+            },
+        ));
 
         parent.spawn((
             Node {
@@ -207,14 +188,9 @@ fn spawn_dialogue_ui(
             },
         ))
         .with_children(|text_parent| {
-            let speaker_name = dialogue_queue
-                .as_ref()
-                .map(|q| q.speaker.clone())
-                .unwrap_or_else(|| "Unknown".to_string());
-
             text_parent.spawn((
                 SpeakerNameNode,
-                Text::new(speaker_name),
+                Text::new(first.speaker.clone()),
                 TextFont {
                     font: font.clone(),
                     font_size: 28.0,
@@ -222,11 +198,6 @@ fn spawn_dialogue_ui(
                 },
                 TextColor(Color::srgb(1.0, 0.85, 0.3)),
             ));
-
-            let initial_text = dialogue_queue
-                .as_ref()
-                .and_then(|q| q.current_text())
-                .unwrap_or_else(|| String::new());
 
             text_parent.spawn((
                 DialogueTextNode,
@@ -238,10 +209,44 @@ fn spawn_dialogue_ui(
                 },
                 TextColor(Color::WHITE),
                 TextLayout::new_with_justify(Justify::Left),
-                TypewriterEffect::new(initial_text),
+                TypewriterEffect::new(first.text.clone()),
             ));
         });
     });
+}
+
+/// Builds the portrait ImageNode (and node display state) for a segment.
+/// Empty portrait path = hidden node.
+fn portrait_for_segment(
+    segment: &DialogueSegment,
+    asset_server: &AssetServer,
+    atlas_layout: &Handle<TextureAtlasLayout>,
+) -> (ImageNode, Display) {
+    if segment.portrait_path.is_empty() {
+        return (ImageNode::default(), Display::None);
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        let max_index = FACE_SHEET_COLUMNS * FACE_SHEET_ROWS - 1;
+        if segment.portrait_face_index > max_index {
+            error!(
+                "❌ Portrait face_index {} exceeds face sheet grid bounds (max {})",
+                segment.portrait_face_index, max_index
+            );
+        }
+    }
+
+    (
+        ImageNode::from_atlas_image(
+            asset_server.load(&segment.portrait_path),
+            TextureAtlas {
+                layout: atlas_layout.clone(),
+                index: segment.portrait_face_index as usize,
+            },
+        ),
+        Display::Flex,
+    )
 }
 
 fn handle_dialogue_events(
@@ -251,10 +256,12 @@ fn handle_dialogue_events(
     tracer: Option<Res<GameTracer>>,
 ) {
     for event in events.read() {
-        info!("📖 Starting dialogue with: {} ({} lines)", event.speaker, event.lines.len());
-        for (i, line) in event.lines.iter().enumerate() {
-            info!("   Line {}: {}", i, line);
+        if event.segments.is_empty() {
+            warn!("StartDialogueEvent with no segments - ignoring");
+            continue;
         }
+        let first_speaker = event.segments[0].speaker.clone();
+        info!("📖 Starting dialogue: {} ({} segments)", first_speaker, event.segments.len());
 
         // Create dialogue session span (if telemetry is enabled)
         if let Some(tracer) = tracer.as_ref() {
@@ -263,15 +270,15 @@ fn handle_dialogue_events(
             let mut span = tracer.tracer()
                 .start_with_context("dialogue.session", &context);
 
-            span.set_attribute(KeyValue::new("dialogue.speaker", event.speaker.clone()));
-            span.set_attribute(KeyValue::new("dialogue.total_lines", event.lines.len() as i64));
+            span.set_attribute(KeyValue::new("dialogue.speaker", first_speaker.clone()));
+            span.set_attribute(KeyValue::new("dialogue.total_lines", event.segments.len() as i64));
 
             // Add telemetry event for dialogue start
             span.add_event(
                 "dialogue.resources_created",
                 vec![
-                    KeyValue::new("queue.lines", event.lines.len() as i64),
-                    KeyValue::new("queue.speaker", event.speaker.clone()),
+                    KeyValue::new("queue.lines", event.segments.len() as i64),
+                    KeyValue::new("queue.speaker", first_speaker.clone()),
                 ],
             );
 
@@ -279,20 +286,13 @@ fn handle_dialogue_events(
             let active_dialogue = ActiveDialogue {
                 span,
                 start_time: Instant::now(),
-                speaker: event.speaker.clone(),
+                speaker: first_speaker,
                 chars_read: 0,
             };
             commands.insert_resource(active_dialogue);
         }
 
-        let queue = DialogueQueue::new(
-            event.speaker.clone(),
-            event.portrait.clone(),
-            event.portrait_face_index,
-            event.lines.clone(),
-        );
-
-        commands.insert_resource(queue);
+        commands.insert_resource(DialogueQueue::new(event.segments.clone()));
         info!("🎮 Transitioning to Dialogue mode");
         next_mode.set(Mode::Dialogue);
     }
@@ -332,17 +332,21 @@ fn type_dialogue_text(
                 record_dialogue_line_event(
                     &mut dialogue.span,
                     &typewriter.full_text,
-                    queue.current_line,
+                    queue.current,
                 );
 
                 if let Some(ref meter) = meter {
+                    let speaker = queue
+                        .current_segment()
+                        .map(|s| s.speaker.clone())
+                        .unwrap_or_else(|| dialogue.speaker.clone());
                     meter.dialogue_lines_read.add(1, &[
-                        KeyValue::new("speaker", dialogue.speaker.clone())
+                        KeyValue::new("speaker", speaker)
                     ]);
                 }
 
-                info!("📝 Dialogue line {} complete: {} chars",
-                    queue.current_line,
+                info!("📝 Dialogue segment {} complete: {} chars",
+                    queue.current,
                     typewriter.full_text.len());
             }
         }
@@ -351,9 +355,12 @@ fn type_dialogue_text(
 
 fn advance_dialogue(
     keyboard: Res<ButtonInput<KeyCode>>,
+    asset_server: Res<AssetServer>,
     mut next_mode: ResMut<NextState<Mode>>,
     mut dialogue_queue: Option<ResMut<DialogueQueue>>,
     mut typewriter_query: Query<(&mut Text, &mut TypewriterEffect), With<DialogueTextNode>>,
+    mut speaker_query: Query<&mut Text, (With<SpeakerNameNode>, Without<DialogueTextNode>)>,
+    mut portrait_query: Query<(&mut ImageNode, &mut Node), With<PortraitNode>>,
 ) {
     if !keyboard.just_pressed(KeyCode::Space) && !keyboard.just_pressed(KeyCode::Enter) {
         return;
@@ -369,11 +376,24 @@ fn advance_dialogue(
 
     if let Some(ref mut queue) = dialogue_queue {
         if queue.advance() {
-            if let Some(next_text) = queue.current_text() {
-                if let Ok((mut text, mut typewriter)) = typewriter_query.single_mut() {
-                    **text = String::new();
-                    *typewriter = TypewriterEffect::new(next_text);
-                }
+            let Some(segment) = queue.current_segment().cloned() else {
+                return;
+            };
+            if let Ok((mut text, mut typewriter)) = typewriter_query.single_mut() {
+                **text = String::new();
+                *typewriter = TypewriterEffect::new(segment.text.clone());
+            }
+            // Each segment carries its own speaker/portrait - a scripted
+            // scene switches faces mid-conversation.
+            if let Ok(mut speaker_text) = speaker_query.single_mut() {
+                **speaker_text = segment.speaker.clone();
+            }
+            if let (Ok((mut image, mut node)), Some(layout)) =
+                (portrait_query.single_mut(), queue.face_layout.as_ref())
+            {
+                let (new_image, display) = portrait_for_segment(&segment, &asset_server, layout);
+                *image = new_image;
+                node.display = display;
             }
         } else {
             info!("Dialogue sequence complete");

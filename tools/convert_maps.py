@@ -21,6 +21,8 @@ from PIL import Image
 
 from rpgmaker_tiles import (
     TILE_SIZE,
+    TILE_ID_A1,
+    TILE_ID_A4,
     apply_shadow,
     is_higher_tile,
     is_shadowing_tile,
@@ -312,6 +314,42 @@ def extract_npcs(rpg_data, source_filename=""):
     return npcs
 
 
+def extract_dialogue_segments(commands):
+    """Extract a scripted scene as ordered per-box segments, each keeping its
+    OWN speaker/portrait (unlike extract_dialogue_from_commands, which
+    majority-votes one speaker for an NPC). Used for exit events that play a
+    scene before transferring - Map009's "retro dialog" retrospective is 15
+    boxes across multiple speakers."""
+    segments = []
+    current = None
+
+    for cmd in commands:
+        if cmd['code'] == 101:
+            params = cmd['parameters']
+            current = {
+                "speaker": params[4] if len(params) > 4 and params[4] else "",
+                "portrait": params[0] or "",
+                "face_index": params[1],
+                "lines": [],
+            }
+            segments.append(current)
+        elif cmd['code'] == 401 and current is not None:
+            cleaned = clean_dialogue_text(cmd['parameters'][0])
+            if cleaned:
+                current['lines'].append(cleaned)
+
+    return [
+        {
+            "speaker": seg['speaker'],
+            "portrait": seg['portrait'],
+            "face_index": seg['face_index'],
+            "text": ' '.join(seg['lines']),
+        }
+        for seg in segments
+        if seg['lines']
+    ]
+
+
 def extract_exits_from_events(events):
     """Extract Transfer Player (code 201) events as map exits.
 
@@ -366,6 +404,10 @@ def extract_exits_from_events(events):
                     # event (action-triggered, next to the inn table) into a
                     # warp mine that teleported passers-by to the End scene.
                     "trigger": "action" if page['trigger'] == 0 else "touch",
+                    # Scripted scene played BEFORE the transfer fires (the
+                    # retro dialog's 15-box retrospective - the game's
+                    # climax dialogue, previously dropped entirely).
+                    "dialogue": extract_dialogue_segments(page['list']),
                 })
 
     return exits
@@ -596,6 +638,22 @@ def convert_tiles_and_collision(rpg_data, tileset_entry, compositor):
     # tilemap.rs's PASS_* constants: 1=down, 2=left, 4=right, 8=up.
     direction_bits = (0x01, 0x02, 0x04, 0x08)
 
+    def is_wall_top(tile_id):
+        """A4 'ceiling' autotiles - the roof band of interior partition
+        walls. VisuStella flags them impassable only from above (0xe08/
+        0xe0a), which the real engine honors too: wherever a partition has
+        a doorway gap, the player can legally sidestep from the gap INTO
+        the wall top and stroll along inside the wall. Engine-faithful,
+        design-nonsense. This game has no behind-wall gameplay, so wall
+        tops are never walkable, period. A4 kinds are 80-127 in rows of 8
+        alternating ceiling/face; the classification is confirmed by the
+        flags themselves (ceiling kinds carry directional nibbles, face
+        kinds are 0x0F solid)."""
+        if not (TILE_ID_A4 <= tile_id < 8192):
+            return False
+        kind = (tile_id - TILE_ID_A1) // 48
+        return ((kind - 80) // 8) % 2 == 0
+
     def check_passage(x, y, bit):
         """Game_Map.checkPassage (rmmz_objects.js): scan this cell's tile
         layers TOP-DOWN; the first layer that isn't a star (0x10) tile
@@ -635,6 +693,8 @@ def convert_tiles_and_collision(rpg_data, tileset_entry, compositor):
             for bit in direction_bits:
                 if check_passage(x, y, bit):
                     mask |= bit
+            if any(is_wall_top(t) for t in (tile_id0, tile_id1, tile_id2, tile_id3)):
+                mask = 0
             passability[index] = mask
             # Back-compat projection for map JSON consumers that predate
             # passability: fully blocked = not passable in any direction.

@@ -224,7 +224,6 @@ fn handle_interaction_input(
     player_query: Query<(&Transform, Option<&PlayerSessionTrace>), With<Player>>,
     npc_query: Query<(&Transform, &NpcDialogue), (With<Npc>, With<InRange>)>,
     mut dialogue_events: MessageWriter<StartDialogueEvent>,
-    asset_server: Res<AssetServer>,
     tracer: Option<Res<GameTracer>>,
     meter: Option<Res<GameMeter>>,
 ) {
@@ -280,14 +279,21 @@ fn handle_interaction_input(
             None
         };
 
-        let portrait = asset_server.load(&dialogue.portrait_path);
+        // One segment per paragraph, all sharing this NPC's speaker and
+        // portrait (scripted scenes with per-box speakers come from exit
+        // events instead - see transitions.rs).
+        let segments = dialogue
+            .lines
+            .iter()
+            .map(|line| crate::dialogue::DialogueSegment {
+                speaker: dialogue.speaker.clone(),
+                portrait_path: dialogue.portrait_path.clone(),
+                portrait_face_index: dialogue.portrait_face_index,
+                text: line.clone(),
+            })
+            .collect();
 
-        dialogue_events.write(StartDialogueEvent {
-            speaker: dialogue.speaker.clone(),
-            portrait: Some(portrait),
-            portrait_face_index: dialogue.portrait_face_index,
-            lines: dialogue.lines.clone(),
-        });
+        dialogue_events.write(StartDialogueEvent { segments });
 
         // Clean up telemetry span if it was created
         if let Some((mut span, guard)) = telemetry_guard {

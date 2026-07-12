@@ -16,8 +16,41 @@ impl Plugin for TransitionsPlugin {
         app.add_systems(Update, (
             check_map_exits,
             animate_door_departure,
-        ).chain().run_if(in_state(Mode::Exploring)));
+        ).chain().run_if(in_state(Mode::Exploring)))
+            // Fires the deferred transfer once the scripted scene closes
+            // (Mode returns to Exploring). Also runs at game start and
+            // after every ordinary dialogue - gated on the resource.
+            .add_systems(OnEnter(Mode::Exploring), fire_transfer_after_dialogue);
     }
+}
+
+/// A transfer waiting for its scripted scene to finish (the exit had
+/// dialogue segments). Inserted by check_map_exits when the exit fires;
+/// consumed when Mode re-enters Exploring, i.e. when the dialogue closes -
+/// including an Escape skip, which still transfers, matching "skip scene"
+/// semantics.
+#[derive(Resource)]
+pub struct PendingTransferAfterDialogue {
+    target_scene: Scene,
+    spawn_x: u32,
+    spawn_y: u32,
+}
+
+fn fire_transfer_after_dialogue(
+    mut commands: Commands,
+    pending: Option<Res<PendingTransferAfterDialogue>>,
+    mut next_scene: ResMut<NextState<Scene>>,
+) {
+    let Some(pending) = pending else {
+        return;
+    };
+    info!("Scripted scene finished - transferring to {:?}", pending.target_scene);
+    commands.insert_resource(PendingArrival {
+        spawn_x: pending.spawn_x,
+        spawn_y: pending.spawn_y,
+    });
+    next_scene.set(pending.target_scene);
+    commands.remove_resource::<PendingTransferAfterDialogue>();
 }
 
 /// A visible door sprite sitting on an exit trigger tile (the town's
@@ -104,6 +137,7 @@ fn check_map_exits(
     departing: Option<Res<DepartingDoor>>,
     mut bumps: MessageReader<crate::player::BumpedIntoTile>,
     keyboard: Res<ButtonInput<KeyCode>>,
+    mut dialogue_events: MessageWriter<crate::dialogue::StartDialogueEvent>,
     mut next_scene: ResMut<NextState<Scene>>,
 ) {
     // A departure is already in flight - don't re-trigger. Still drain the
@@ -171,13 +205,35 @@ fn check_map_exits(
             exit.trigger_x, exit.trigger_y, target_scene, exit.target_spawn_x, exit.target_spawn_y
         );
 
-        // If a door sprite sits on this tile, play its open animation first
-        // and transfer when it finishes; bare exits transfer immediately.
+        // Precedence: a scripted scene plays first (transfer fires when it
+        // closes); a door on the tile animates open first; bare exits
+        // transfer immediately.
         let door_here = doors.iter().find(|(_, door)| {
             door.tile_x == exit.trigger_x && door.tile_y == exit.trigger_y
         });
 
-        if let Some((door_entity, _)) = door_here {
+        if !exit.dialogue.is_empty() {
+            let segments = exit
+                .dialogue
+                .iter()
+                .map(|seg| crate::dialogue::DialogueSegment {
+                    speaker: seg.speaker.clone(),
+                    portrait_path: if seg.portrait.is_empty() {
+                        String::new()
+                    } else {
+                        format!("textures/portraits/{}.png", seg.portrait)
+                    },
+                    portrait_face_index: seg.face_index,
+                    text: seg.text.clone(),
+                })
+                .collect();
+            dialogue_events.write(crate::dialogue::StartDialogueEvent { segments });
+            commands.insert_resource(PendingTransferAfterDialogue {
+                target_scene,
+                spawn_x: exit.target_spawn_x,
+                spawn_y: exit.target_spawn_y,
+            });
+        } else if let Some((door_entity, _)) = door_here {
             commands.insert_resource(DepartingDoor {
                 door: door_entity,
                 target_scene,
@@ -210,10 +266,10 @@ mod tests {
     // tile or target without the test being updated to match.
     fn town_of_endgame_exits() -> Vec<ExitData> {
         vec![
-            ExitData { trigger_x: 8, trigger_y: 29, target_scene: "TeamMarathonRetro".into(), target_spawn_x: 12, target_spawn_y: 15, trigger: ExitTrigger::Touch },
-            ExitData { trigger_x: 23, trigger_y: 20, target_scene: "TeamDisco".into(), target_spawn_x: 7, target_spawn_y: 13, trigger: ExitTrigger::Touch },
-            ExitData { trigger_x: 6, trigger_y: 18, target_scene: "TeamInferno".into(), target_spawn_x: 11, target_spawn_y: 18, trigger: ExitTrigger::Touch },
-            ExitData { trigger_x: 29, trigger_y: 13, target_scene: "MahoganyRow".into(), target_spawn_x: 16, target_spawn_y: 10, trigger: ExitTrigger::Touch },
+            ExitData { trigger_x: 8, trigger_y: 29, target_scene: "TeamMarathonRetro".into(), target_spawn_x: 12, target_spawn_y: 15, trigger: ExitTrigger::Touch, dialogue: vec![] },
+            ExitData { trigger_x: 23, trigger_y: 20, target_scene: "TeamDisco".into(), target_spawn_x: 7, target_spawn_y: 13, trigger: ExitTrigger::Touch, dialogue: vec![] },
+            ExitData { trigger_x: 6, trigger_y: 18, target_scene: "TeamInferno".into(), target_spawn_x: 11, target_spawn_y: 18, trigger: ExitTrigger::Touch, dialogue: vec![] },
+            ExitData { trigger_x: 29, trigger_y: 13, target_scene: "MahoganyRow".into(), target_spawn_x: 16, target_spawn_y: 10, trigger: ExitTrigger::Touch, dialogue: vec![] },
         ]
     }
 
@@ -225,6 +281,7 @@ mod tests {
         let mut world = World::new();
         world.init_resource::<NextState<Scene>>();
         world.init_resource::<Messages<crate::player::BumpedIntoTile>>();
+        world.init_resource::<Messages<crate::dialogue::StartDialogueEvent>>();
         world.init_resource::<ButtonInput<KeyCode>>();
         world.insert_resource(MapExits(exits));
         world.insert_resource(CollisionMap::new(width, height));
@@ -271,7 +328,7 @@ mod tests {
     // mine where walking near the table teleported the player to End.
     fn retro_action_exit() -> Vec<ExitData> {
         vec![
-            ExitData { trigger_x: 12, trigger_y: 12, target_scene: "End".into(), target_spawn_x: 8, target_spawn_y: 5, trigger: ExitTrigger::Action },
+            ExitData { trigger_x: 12, trigger_y: 12, target_scene: "End".into(), target_spawn_x: 8, target_spawn_y: 5, trigger: ExitTrigger::Action, dialogue: vec![] },
         ]
     }
 
@@ -302,6 +359,61 @@ mod tests {
             matches!(next, NextState::Pending(Scene::End)),
             "E on the action tile should transfer, got {next:?}"
         );
+    }
+
+    #[test]
+    fn exit_with_dialogue_plays_the_scene_before_transferring() {
+        // The retro dialog: E on the tile must start the scripted scene
+        // (StartDialogueEvent) and defer the transfer, not jump straight
+        // to End - and once the scene closes, the deferred transfer fires.
+        let mut exits = retro_action_exit();
+        exits[0].dialogue = vec![crate::map_data::DialogueSegmentData {
+            speaker: "Nyaanager Evie".into(),
+            portrait: "Nature".into(),
+            face_index: 4,
+            text: "Thanks for helping us with this incident Amy.".into(),
+        }];
+        let mut world = setup_world((12, 12), exits, 24, 21);
+        world
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::KeyE);
+
+        world.run_system_once(check_map_exits).unwrap();
+
+        assert!(
+            matches!(world.resource::<NextState<Scene>>(), NextState::Unchanged),
+            "transfer must wait for the scripted scene"
+        );
+        assert!(world.get_resource::<PendingArrival>().is_none());
+        assert!(world.get_resource::<PendingTransferAfterDialogue>().is_some());
+        let sent = world
+            .resource::<Messages<crate::dialogue::StartDialogueEvent>>()
+            .iter_current_update_messages()
+            .count();
+        assert_eq!(sent, 1, "the scripted scene should have been started");
+
+        // Scene closes (Mode re-enters Exploring) -> deferred transfer fires.
+        world.run_system_once(fire_transfer_after_dialogue).unwrap();
+
+        let next = world.resource::<NextState<Scene>>();
+        assert!(
+            matches!(next, NextState::Pending(Scene::End)),
+            "deferred transfer should fire after the scene, got {next:?}"
+        );
+        let arrival = world.resource::<PendingArrival>();
+        assert_eq!((arrival.spawn_x, arrival.spawn_y), (8, 5));
+        assert!(world.get_resource::<PendingTransferAfterDialogue>().is_none());
+    }
+
+    #[test]
+    fn fire_transfer_after_dialogue_is_inert_without_a_pending_transfer() {
+        // OnEnter(Mode::Exploring) fires at game start and after every
+        // ordinary NPC dialogue - it must do nothing then.
+        let mut world = World::new();
+        world.init_resource::<NextState<Scene>>();
+        world.run_system_once(fire_transfer_after_dialogue).unwrap();
+        assert!(matches!(world.resource::<NextState<Scene>>(), NextState::Unchanged));
+        assert!(world.get_resource::<PendingArrival>().is_none());
     }
 
     #[test]
@@ -371,7 +483,7 @@ mod tests {
     // door out of the game's opening scene, back to Town of Endgame.
     fn intro_exits() -> Vec<ExitData> {
         vec![
-            ExitData { trigger_x: 8, trigger_y: 1, target_scene: "TownOfEndgame".into(), target_spawn_x: 16, target_spawn_y: 23, trigger: ExitTrigger::Touch },
+            ExitData { trigger_x: 8, trigger_y: 1, target_scene: "TownOfEndgame".into(), target_spawn_x: 16, target_spawn_y: 23, trigger: ExitTrigger::Touch, dialogue: vec![] },
         ]
     }
 
@@ -390,6 +502,7 @@ mod tests {
         let mut world = World::new();
         world.init_resource::<NextState<Scene>>();
         world.init_resource::<Messages<crate::player::BumpedIntoTile>>();
+        world.init_resource::<Messages<crate::dialogue::StartDialogueEvent>>();
         world.init_resource::<ButtonInput<KeyCode>>();
         world.insert_resource(MapExits(intro_exits()));
         world.insert_resource(CollisionMap::new(WIDTH, HEIGHT));
@@ -463,6 +576,7 @@ mod tests {
                 target_spawn_x: expected_spawn.0,
                 target_spawn_y: expected_spawn.1,
                 trigger: ExitTrigger::Touch,
+                dialogue: vec![],
             }];
             let mut world = setup_world(trigger_tile, exits, width, height);
             world.run_system_once(check_map_exits).unwrap();
