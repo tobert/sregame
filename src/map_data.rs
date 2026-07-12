@@ -43,6 +43,13 @@ pub struct MapData {
     /// `collision`).
     #[serde(default)]
     pub passability: Vec<u8>,
+    /// Sparse [x, y] list of counter cells (RPGMaker's Counter tile flag,
+    /// 0x80): the action button reaches ONE tile across a counter, which is
+    /// how shopkeepers standing behind counters are talkable. Baked by
+    /// tools/convert_maps.py; defaults to empty for map JSON predating this
+    /// field. See handle_interaction_input in npc.rs.
+    #[serde(default)]
+    pub counters: Vec<(u32, u32)>,
     pub npcs: Vec<NpcData>,
     #[serde(default)]
     pub exits: Vec<ExitData>,
@@ -157,6 +164,16 @@ pub struct NpcData {
     /// Defaults to false (a statue) for map JSON predating this field.
     #[serde(default)]
     pub step_anime: bool,
+    /// Random tile-step wandering (doggo). Wandering respects map
+    /// passability even for `through` characters - engine-divergent,
+    /// intent-faithful (see npc.rs::wander_npcs). Defaults to false.
+    #[serde(default)]
+    pub wander: bool,
+    /// RPGMaker's Through flag: the character never blocks the player
+    /// (skips the NPC body collider - see NpcBody in npc.rs). Only doggo
+    /// has it in the original. Defaults to false.
+    #[serde(default)]
+    pub through: bool,
     pub facing: String,
     pub dialogue: DialogueData,
 }
@@ -482,6 +499,36 @@ mod tests {
         let map = MapData::load("team_disco").expect("shipped disco should load");
         let idx = (7 * map.width + 3) as usize;
         assert_eq!(map.passability[idx], 0, "wall-top cells must be sealed");
+    }
+
+    #[test]
+    fn shipped_disco_counters_cover_the_shop_counters() {
+        // Team Disco's five shopkeepers all stand behind Counter-flagged
+        // (0x80) cells; pins the converter's counter bake end to end.
+        // (9,5) is the counter between the player and Cody.
+        let map = MapData::load("team_disco").expect("shipped disco should load");
+        assert!(map.counters.contains(&(9, 5)), "Cody's counter cell must be baked");
+        assert_eq!(map.counters.len(), 15, "disco has 15 counter cells in the source");
+    }
+
+    #[test]
+    fn shipped_town_doggo_is_a_wandering_through_npc() {
+        // doggo is promoted from prop to NPC by an EVENT_OVERRIDES entry in
+        // tools/convert_maps.py: random wander, Through (never blocks), and
+        // one bark. Everyone else stays solid and stationary.
+        let map = MapData::load("town_of_endgame").expect("shipped town should load");
+        let doggo = map.npcs.iter().find(|n| n.name == "doggo").expect("doggo should be an NPC now");
+        assert!(doggo.wander, "doggo wanders");
+        assert!(doggo.through, "doggo never blocks");
+        assert_eq!(doggo.dialogue.lines, vec!["wan wan!"]);
+        assert!(
+            map.npcs.iter().all(|n| n.wander == (n.name == "doggo")),
+            "nobody but doggo wanders"
+        );
+        assert!(
+            !map.props.iter().any(|p| p.name == "doggo"),
+            "doggo must no longer be a prop"
+        );
     }
 
     #[test]

@@ -1150,6 +1150,68 @@
     0,
     0
   ],
+  "counters": [
+    [
+      5,
+      4
+    ],
+    [
+      9,
+      4
+    ],
+    [
+      5,
+      5
+    ],
+    [
+      9,
+      5
+    ],
+    [
+      5,
+      6
+    ],
+    [
+      9,
+      6
+    ],
+    [
+      4,
+      10
+    ],
+    [
+      5,
+      10
+    ],
+    [
+      9,
+      10
+    ],
+    [
+      11,
+      10
+    ],
+    [
+      12,
+      10
+    ],
+    [
+      5,
+      11
+    ],
+    [
+      9,
+      11
+    ],
+    [
+      5,
+      12
+    ],
+    [
+      9,
+      12
+    ]
+  ],
   "npcs": [
     {
       "name": "Polly Math",
@@ -1159,6 +1221,8 @@
       "sprite_index": 3,
       "step_anime": true,
       "facing": "right",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Polly Math",
         "portrait": "People1",
@@ -1178,6 +1242,8 @@
       "sprite_index": 4,
       "step_anime": true,
       "facing": "left",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Cody",
         "portrait": "People1",
@@ -1195,6 +1261,8 @@
       "sprite_index": 5,
       "step_anime": true,
       "facing": "left",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Devo Pestorius",
         "portrait": "People1",
@@ -1213,6 +1281,8 @@
       "sprite_index": 0,
       "step_anime": true,
       "facing": "right",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Isabella",
         "portrait": "Isabella",
@@ -1231,6 +1301,8 @@
       "sprite_index": 0,
       "step_anime": false,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Managear Greg",
         "portrait": "Greg",
@@ -1248,6 +1320,8 @@
       "sprite_index": 4,
       "step_anime": true,
       "facing": "left",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Dom",
         "portrait": "People2",

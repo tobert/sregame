@@ -258,6 +258,19 @@ EVENT_OVERRIDES = {
     ("Map003.json", 3): {
         "keep_lines_separate": True,
     },
+    # doggo (town). In the source he's a dialogue-less parallel event running
+    # a scripted left/right patrol route. Promoting him to a real NPC is a
+    # deliberate content addition (Amy, 2026-07-12): he wanders RANDOMLY
+    # (not the original patrol - also her call) and barks when talked to.
+    # "through" carries the source page's through=true (he never blocks);
+    # wandering still respects map passability so he doesn't stroll into
+    # the pond - engine-divergent for a through character, intent-faithful.
+    ("Map002.json", 13): {
+        "synthetic_dialogue": ["wan wan!"],
+        "synthetic_speaker": "doggo",
+        "wander": True,
+        "through": True,
+    },
 }
 
 
@@ -283,6 +296,11 @@ def extract_npcs(rpg_data, source_filename=""):
             keep_lines_separate=override.get('keep_lines_separate', False),
         )
 
+        # An image event with no dialogue of its own is normally a prop (see
+        # extract_props), unless an override grants it synthetic lines -
+        # doggo's "wan wan!" is the motivating case.
+        if not lines:
+            lines = override.get('synthetic_dialogue', [])
         if not lines:
             continue
 
@@ -304,6 +322,11 @@ def extract_npcs(rpg_data, source_filename=""):
             # original has this on - without it the town is full of statues.
             "step_anime": page['stepAnime'],
             "facing": convert_direction(image['direction']),
+            # Random tile-step wandering + RPGMaker's through flag (never
+            # blocks the player). Only granted by override for now (doggo);
+            # the original's scripted patrol routes are not ported.
+            "wander": override.get('wander', False),
+            "through": override.get('through', page['through']),
             "dialogue": {
                 "speaker": speaker,
                 "portrait": portrait,
@@ -416,11 +439,11 @@ def extract_exits_from_events(events):
 def extract_props(events, npcs, doors):
     """Extract ambient visual props: events that carry a character image but
     have neither dialogue (those are NPCs) nor a transfer (those are doors).
-    Town of Endgame has two: 'doggo' (a dog with a wander route - ported as
-    a stationary stepping sprite for now) and 'The Boss's Truck' (a static
-    vehicle that blocks its tile: RPGMaker events with priority 1 and
-    through=false are impassable, and our baked tile collision knows nothing
-    about events, so the blocking is carried per-prop).
+    Down to one in practice: 'The Boss's Truck' (a static vehicle that
+    blocks its tile: RPGMaker events with priority 1 and through=false are
+    impassable, and our baked tile collision knows nothing about events, so
+    the blocking is carried per-prop). doggo used to be the second prop; an
+    EVENT_OVERRIDES entry now promotes him to a wandering NPC.
     """
     npc_positions = {(n['x'], n['y']) for n in npcs}
     door_positions = {(d['x'], d['y']) for d in doors}
@@ -633,6 +656,7 @@ def convert_tiles_and_collision(rpg_data, tileset_entry, compositor):
     upper_tiles = [0] * num_cells
     collision = [False] * num_cells
     passability = [0] * num_cells
+    counters = []
 
     # Direction bits, identical values to RPGMaker's flag nibble and to
     # tilemap.rs's PASS_* constants: 1=down, 2=left, 4=right, 8=up.
@@ -696,6 +720,16 @@ def convert_tiles_and_collision(rpg_data, tileset_entry, compositor):
             if any(is_wall_top(t) for t in (tile_id0, tile_id1, tile_id2, tile_id3)):
                 mask = 0
             passability[index] = mask
+            # RPGMaker's Counter flag (0x80, Game_Map.isCounter): the action
+            # button reaches ONE tile across a counter-flagged tile, which is
+            # how shopkeepers behind counters are talkable. Sparse [x, y]
+            # list - a map has at most a few dozen counter cells.
+            if any(
+                flags[t] & 0x80
+                for t in (tile_id0, tile_id1, tile_id2, tile_id3)
+                if t
+            ):
+                counters.append([x, y])
             # Back-compat projection for map JSON consumers that predate
             # passability: fully blocked = not passable in any direction.
             # No border hack needed anymore: border walls block via their
@@ -707,7 +741,7 @@ def convert_tiles_and_collision(rpg_data, tileset_entry, compositor):
         "blocked_cells": sum(collision),
         "upper_cells": sum(1 for v in upper_tiles if v != 0),
     }
-    return tiles, upper_tiles, collision, passability, stats
+    return tiles, upper_tiles, collision, passability, counters, stats
 
 
 # ---------------------------------------------------------------------------
@@ -732,7 +766,7 @@ def convert_map(rpgmaker_map_path, output_path, tileset_entry, compositor):
     height = rpg_data['height']
     tileset_id = rpg_data['tilesetId']
 
-    tiles, upper_tiles, collision, passability, stats = convert_tiles_and_collision(
+    tiles, upper_tiles, collision, passability, counters, stats = convert_tiles_and_collision(
         rpg_data, tileset_entry, compositor
     )
 
@@ -749,6 +783,7 @@ def convert_map(rpgmaker_map_path, output_path, tileset_entry, compositor):
         "upper_tiles": upper_tiles,
         "collision": collision,
         "passability": passability,
+        "counters": counters,
         "npcs": npcs,
         "exits": exits,
         "doors": doors,
@@ -767,7 +802,8 @@ def convert_map(rpgmaker_map_path, output_path, tileset_entry, compositor):
     )
     print(
         f"  Blocked cells: {stats['blocked_cells']}/{width * height}  "
-        f"Upper-layer cells: {stats['upper_cells']}"
+        f"Upper-layer cells: {stats['upper_cells']}  "
+        f"Counter cells: {len(counters)}"
     )
     print(f"  NPCs: {len(npcs)}")
     for npc in npcs:

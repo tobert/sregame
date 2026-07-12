@@ -15,13 +15,119 @@ impl Plugin for NpcPlugin {
             .register_type::<NpcDialogue>()
             .register_type::<CharacterFrames>()
             .register_type::<Interactable>()
+            .register_type::<NpcBody>()
             .add_systems(Update, (
                 check_npc_proximity,
                 handle_interaction_input,
             ).chain().run_if(in_state(Mode::Exploring)))
+            // Wandering pauses during dialogue - doggo shouldn't stroll off
+            // mid-"wan wan".
+            .add_systems(Update, wander_npcs.run_if(in_state(Mode::Exploring)))
             // Stepping runs whenever the game is playing - in the original,
             // NPCs keep bobbing behind an open dialogue box too.
             .add_systems(Update, animate_stepping_npcs.run_if(in_state(GameState::Playing)));
+    }
+}
+
+/// Marker: this NPC's body blocks the player. Inserted at spawn for every
+/// NPC whose original event is NOT Through (all of them except doggo) -
+/// player.rs::npc_blocks_move collides only against NpcBody carriers.
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+pub struct NpcBody;
+
+/// Random tile-step wandering (doggo). Steps one tile at a time in a
+/// random direction, honoring map passability even though doggo is Through
+/// in the source - engine-divergent (RPGMaker's Through ignores terrain)
+/// but intent-faithful: a dog that wanders into the pond or through house
+/// walls reads as a bug, not a feature. Amy's spec (2026-07-12): random
+/// movement, not the original's scripted left/right patrol.
+#[derive(Component)]
+pub struct Wanderer {
+    /// Pause between step decisions.
+    idle: Timer,
+    /// World-space destination of the step in progress, if any.
+    target: Option<Vec2>,
+    /// xorshift64 state, lazily seeded from the clock on first use.
+    rng: u64,
+}
+
+impl Default for Wanderer {
+    fn default() -> Self {
+        Self {
+            idle: Timer::from_seconds(1.5, TimerMode::Repeating),
+            target: None,
+            rng: 0,
+        }
+    }
+}
+
+/// RPGMaker move speed 3 (doggo's): 2^3/256 tiles per frame at 60fps on
+/// 48px tiles = 90 px/s.
+const WANDER_SPEED: f32 = 90.0;
+
+fn wander_npcs(
+    time: Res<Time>,
+    collision_map: Option<Res<crate::tilemap::CollisionMap>>,
+    mut query: Query<(&mut Wanderer, &mut Transform, &mut CharacterFrames)>,
+) {
+    let Some(map) = collision_map else { return };
+
+    for (mut wanderer, mut transform, mut frames) in &mut query {
+        // A step in progress: glide to the target tile, snap on arrival.
+        if let Some(target) = wanderer.target {
+            let position = transform.translation.truncate();
+            let step = WANDER_SPEED * time.delta_secs();
+            if position.distance(target) <= step {
+                transform.translation.x = target.x;
+                transform.translation.y = target.y;
+                wanderer.target = None;
+            } else {
+                let direction = (target - position).normalize_or_zero();
+                transform.translation.x += direction.x * step;
+                transform.translation.y += direction.y * step;
+            }
+            continue;
+        }
+
+        wanderer.idle.tick(time.delta());
+        if !wanderer.idle.just_finished() {
+            continue;
+        }
+
+        if wanderer.rng == 0 {
+            // |1 keeps the seed nonzero (xorshift's absorbing state).
+            wanderer.rng = time.elapsed().as_nanos() as u64 | 1;
+        }
+        wanderer.rng ^= wanderer.rng << 13;
+        wanderer.rng ^= wanderer.rng >> 7;
+        wanderer.rng ^= wanderer.rng << 17;
+
+        // Direction deltas in RPGMaker tile orientation (y grows downward).
+        let (dx, dy, facing) = match wanderer.rng % 4 {
+            0 => (0, 1, NpcFacing::Down),
+            1 => (-1, 0, NpcFacing::Left),
+            2 => (1, 0, NpcFacing::Right),
+            _ => (0, -1, NpcFacing::Up),
+        };
+
+        let position = transform.translation.truncate();
+        let from = crate::map_data::world_to_tile(position, map.width, map.height);
+        let to = (from.0 + dx, from.1 + dy);
+        if !map.can_step(from, to) {
+            // Blocked step: just turn toward it and wait for the next tick,
+            // like a dog sniffing at a wall.
+            frames.facing_row = facing as u32;
+            continue;
+        }
+
+        frames.facing_row = facing as u32;
+        wanderer.target = Some(crate::map_data::tile_to_world(
+            to.0 as u32,
+            to.1 as u32,
+            map.width,
+            map.height,
+        ));
     }
 }
 
@@ -222,8 +328,9 @@ fn check_npc_proximity(
 
 fn handle_interaction_input(
     keyboard: Res<ButtonInput<KeyCode>>,
-    player_query: Query<(&Transform, Option<&PlayerSessionTrace>), With<Player>>,
+    player_query: Query<(&Transform, &crate::player::Facing, Option<&PlayerSessionTrace>), With<Player>>,
     npc_query: Query<(&Transform, &NpcDialogue), (With<Npc>, With<InRange>)>,
+    all_npcs: Query<(&Transform, &NpcDialogue), With<Npc>>,
     mut dialogue_events: MessageWriter<StartDialogueEvent>,
     map_exits: Option<Res<crate::tilemap::MapExits>>,
     collision_map: Option<Res<crate::tilemap::CollisionMap>>,
@@ -234,7 +341,7 @@ fn handle_interaction_input(
         return;
     }
 
-    let Ok((player_transform, session_trace)) = player_query.single() else {
+    let Ok((player_transform, player_facing, session_trace)) = player_query.single() else {
         return;
     };
 
@@ -270,6 +377,31 @@ fn handle_interaction_input(
             closest_npc = Some((dialogue, distance));
         }
     }
+
+    // Counter reach (RPGMaker Game_Player.checkEventTriggerThere): with
+    // nobody in plain interaction range, if the tile directly ahead is a
+    // counter, the press reaches the NPC one tile beyond it. This is how
+    // shopkeepers behind counters are talkable - the 64px radius is
+    // center-to-center and a counter puts ~96px between the two.
+    let closest_npc = closest_npc.or_else(|| {
+        let map = collision_map.as_ref()?;
+        let (dx, dy) = match player_facing {
+            crate::player::Facing::Down => (0, 1),
+            crate::player::Facing::Left => (-1, 0),
+            crate::player::Facing::Right => (1, 0),
+            crate::player::Facing::Up => (0, -1),
+        };
+        let (px, py) = crate::map_data::world_to_tile(player_pos, map.width, map.height);
+        if !map.is_counter(px + dx, py + dy) {
+            return None;
+        }
+        let beyond = (px + 2 * dx, py + 2 * dy);
+        all_npcs.iter().find_map(|(npc_transform, dialogue)| {
+            let npc_pos = npc_transform.translation.truncate();
+            let npc_tile = crate::map_data::world_to_tile(npc_pos, map.width, map.height);
+            (npc_tile == beyond).then(|| (dialogue, player_pos.distance(npc_pos)))
+        })
+    });
 
     if let Some((dialogue, distance)) = closest_npc {
         info!("🤝 NPC interaction started: {} (distance: {:.1}px)", dialogue.speaker, distance);
@@ -325,6 +457,10 @@ fn handle_interaction_input(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bevy::ecs::system::RunSystemOnce;
+    use crate::map_data::tile_to_world;
+    use crate::player::Facing;
+    use crate::tilemap::CollisionMap;
 
     #[test]
     fn step_pattern_ping_pongs_through_the_middle() {
@@ -338,5 +474,144 @@ mod tests {
         for step in 0..=u8::MAX {
             assert!(step_pattern(step) < 3, "step {step} escaped the 3 patterns");
         }
+    }
+
+    // A 5x5 world: player at (2,3) facing Up, an NPC at (2,1), and the tile
+    // between them at (2,2) - a counter or not, per test.
+    fn setup_counter_world(counter_between: bool) -> World {
+        let mut world = World::new();
+        world.init_resource::<Messages<StartDialogueEvent>>();
+        world.init_resource::<ButtonInput<KeyCode>>();
+
+        let mut map = CollisionMap::new(5, 5);
+        if counter_between {
+            map.counters.insert((2, 2));
+        }
+        world.insert_resource(map);
+
+        let player_pos = tile_to_world(2, 3, 5, 5);
+        world.spawn((
+            Player,
+            Facing::Up,
+            Transform::from_xyz(player_pos.x, player_pos.y, 1.0),
+        ));
+
+        let npc_pos = tile_to_world(2, 1, 5, 5);
+        world.spawn((
+            Npc { name: "Isabella".into(), sprite_facing: NpcFacing::Down, sprite_slot: 0 },
+            NpcDialogue {
+                speaker: "Isabella".into(),
+                portrait_path: String::new(),
+                portrait_face_index: 0,
+                lines: vec!["Welcome to the shop.".into()],
+            },
+            Transform::from_xyz(npc_pos.x, npc_pos.y, 1.0),
+        ));
+
+        world.resource_mut::<ButtonInput<KeyCode>>().press(KeyCode::KeyE);
+        world
+    }
+
+    fn dialogue_count(world: &World) -> usize {
+        world
+            .resource::<Messages<StartDialogueEvent>>()
+            .iter_current_update_messages()
+            .count()
+    }
+
+    #[test]
+    fn counter_reach_talks_across_the_counter() {
+        // The shopkeeper is two tiles away (~96px, outside the 64px radius,
+        // so she never gets InRange), but the tile between is a counter:
+        // E must reach across and start her dialogue - RPGMaker's
+        // checkEventTriggerThere counter hop.
+        let mut world = setup_counter_world(true);
+        world.run_system_once(handle_interaction_input).unwrap();
+        assert_eq!(dialogue_count(&world), 1, "counter should carry the press across");
+    }
+
+    #[test]
+    fn no_counter_no_reach() {
+        // Same layout without the counter flag: two tiles is simply out of
+        // range and the press must do nothing.
+        let mut world = setup_counter_world(false);
+        world.run_system_once(handle_interaction_input).unwrap();
+        assert_eq!(dialogue_count(&world), 0, "no counter, no long reach");
+    }
+
+    #[test]
+    fn counter_reach_only_works_when_facing_the_counter() {
+        // Facing AWAY from the counter (down) must not reach the NPC north
+        // of it - the hop follows the player's facing, not proximity.
+        let mut world = setup_counter_world(true);
+        let mut facings = world.query_filtered::<&mut Facing, With<Player>>();
+        *facings.single_mut(&mut world).unwrap() = Facing::Down;
+
+        world.run_system_once(handle_interaction_input).unwrap();
+        assert_eq!(dialogue_count(&world), 0, "reach must follow facing");
+    }
+
+    #[test]
+    fn wanderer_steps_onto_a_walkable_tile_and_stops_at_walls() {
+        // A wanderer on a 3x3 map whose center is the only walkable cell
+        // can never leave it; once the ring opens up, a step decision picks
+        // some adjacent walkable tile. Exercises the can_step gate with
+        // every direction blocked vs. open.
+        let mut world = World::new();
+        world.init_resource::<Time>();
+
+        let mut map = CollisionMap::new(3, 3);
+        for x in 0..3 {
+            for y in 0..3 {
+                if (x, y) != (1, 1) {
+                    map.set_tile(x, y, crate::tilemap::TileCollision::Blocked);
+                }
+            }
+        }
+        world.insert_resource(map);
+
+        let center = tile_to_world(1, 1, 3, 3);
+        world.spawn((
+            Wanderer::default(),
+            CharacterFrames { slot: 0, facing_row: 0 },
+            Transform::from_xyz(center.x, center.y, 1.0),
+        ));
+
+        // Tick well past the idle timer several times: every step decision
+        // must refuse (all four neighbors are blocked).
+        for _ in 0..8 {
+            world
+                .resource_mut::<Time>()
+                .advance_by(std::time::Duration::from_secs(2));
+            world.run_system_once(wander_npcs).unwrap();
+        }
+        let mut wanderers = world.query::<(&Wanderer, &Transform)>();
+        let (wanderer, transform) = wanderers.single(&world).unwrap();
+        assert!(wanderer.target.is_none(), "boxed-in wanderer must not pick a target");
+        assert_eq!(transform.translation.truncate(), center, "and must not move");
+
+        // Open the ring: the next decision must pick an adjacent tile.
+        world.insert_resource(CollisionMap::new(3, 3));
+        let mut stepped = false;
+        for _ in 0..8 {
+            world
+                .resource_mut::<Time>()
+                .advance_by(std::time::Duration::from_secs(2));
+            world.run_system_once(wander_npcs).unwrap();
+            let mut wanderers = world.query::<&Wanderer>();
+            if let Some(target) = wanderers.single(&world).unwrap().target {
+                let neighbors: Vec<Vec2> = [(1u32, 0u32), (0, 1), (2, 1), (1, 2)]
+                    .iter()
+                    .map(|&(x, y)| tile_to_world(x, y, 3, 3))
+                    .collect();
+                assert!(
+                    neighbors.contains(&target),
+                    "wander target {target:?} is not an adjacent tile"
+                );
+                stepped = true;
+                break;
+            }
+        }
+        assert!(stepped, "an unboxed wanderer should step within a few ticks");
     }
 }

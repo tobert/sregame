@@ -2026,6 +2026,164 @@
     0,
     0
   ],
+  "counters": [
+    [
+      7,
+      9
+    ],
+    [
+      8,
+      9
+    ],
+    [
+      9,
+      9
+    ],
+    [
+      10,
+      9
+    ],
+    [
+      11,
+      9
+    ],
+    [
+      12,
+      9
+    ],
+    [
+      13,
+      9
+    ],
+    [
+      14,
+      9
+    ],
+    [
+      15,
+      9
+    ],
+    [
+      16,
+      9
+    ],
+    [
+      17,
+      9
+    ],
+    [
+      18,
+      9
+    ],
+    [
+      19,
+      9
+    ],
+    [
+      7,
+      10
+    ],
+    [
+      8,
+      10
+    ],
+    [
+      9,
+      10
+    ],
+    [
+      10,
+      10
+    ],
+    [
+      11,
+      10
+    ],
+    [
+      12,
+      10
+    ],
+    [
+      13,
+      10
+    ],
+    [
+      14,
+      10
+    ],
+    [
+      15,
+      10
+    ],
+    [
+      16,
+      10
+    ],
+    [
+      17,
+      10
+    ],
+    [
+      18,
+      10
+    ],
+    [
+      19,
+      10
+    ],
+    [
+      7,
+      11
+    ],
+    [
+      8,
+      11
+    ],
+    [
+      9,
+      11
+    ],
+    [
+      10,
+      11
+    ],
+    [
+      11,
+      11
+    ],
+    [
+      12,
+      11
+    ],
+    [
+      13,
+      11
+    ],
+    [
+      14,
+      11
+    ],
+    [
+      15,
+      11
+    ],
+    [
+      16,
+      11
+    ],
+    [
+      17,
+      11
+    ],
+    [
+      18,
+      11
+    ],
+    [
+      19,
+      11
+    ]
+  ],
   "npcs": [
     {
       "name": "Courage",
@@ -2035,6 +2193,8 @@
       "sprite_index": 2,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Courage",
         "portrait": "Monster",
@@ -2053,6 +2213,8 @@
       "sprite_index": 0,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Ocean",
         "portrait": "People4",
@@ -2072,6 +2234,8 @@
       "sprite_index": 4,
       "step_anime": true,
       "facing": "right",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Nyaanager Evie",
         "portrait": "Nature",
@@ -2090,6 +2254,8 @@
       "sprite_index": 4,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Glenn Gary",
         "portrait": "Actor1",
@@ -2111,6 +2277,8 @@
       "sprite_index": 3,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Shelly the Intern",
         "portrait": "Actor3",
@@ -2130,6 +2298,8 @@
       "sprite_index": 0,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Doctor McFire",
         "portrait": "DrMcfire",
@@ -2149,6 +2319,8 @@
       "sprite_index": 7,
       "step_anime": true,
       "facing": "up",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "The Boss",
         "portrait": "Monster",
@@ -2167,6 +2339,8 @@
       "sprite_index": 6,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Hidaslo Xela",
         "portrait": "People3",
@@ -2185,6 +2359,8 @@
       "sprite_index": 6,
       "step_anime": false,
       "facing": "left",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Vee Peapod",
         "portrait": "People4",
@@ -2203,6 +2379,8 @@
       "sprite_index": 0,
       "step_anime": false,
       "facing": "up",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Managear Greg",
         "portrait": "Greg",
@@ -2220,6 +2398,8 @@
       "sprite_index": 0,
       "step_anime": true,
       "facing": "up",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Isabella",
         "portrait": "Isabella",
@@ -2237,6 +2417,8 @@
       "sprite_index": 3,
       "step_anime": true,
       "facing": "up",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Polly Math",
         "portrait": "People1",
@@ -2256,6 +2438,8 @@
       "sprite_index": 5,
       "step_anime": true,
       "facing": "up",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Devo Pestorius",
         "portrait": "People1",
@@ -2273,6 +2457,8 @@
       "sprite_index": 3,
       "step_anime": true,
       "facing": "left",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Dave",
         "portrait": "Evil",
@@ -2293,6 +2479,8 @@
       "sprite_index": 4,
       "step_anime": true,
       "facing": "right",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Cody",
         "portrait": "People1",

@@ -2218,6 +2218,7 @@
     0,
     0
   ],
+  "counters": [],
   "npcs": [
     {
       "name": "Shelly the Intern",
@@ -2227,6 +2228,8 @@
       "sprite_index": 3,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Shelly the Intern",
         "portrait": "Actor3",
@@ -2246,6 +2249,8 @@
       "sprite_index": 3,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Leah Dev",
         "portrait": "SF_Actor2",
@@ -2266,6 +2271,8 @@
       "sprite_index": 4,
       "step_anime": true,
       "facing": "left",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Kirito",
         "portrait": "SF_Actor1",
@@ -2285,6 +2292,8 @@
       "sprite_index": 1,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Tenex",
         "portrait": "Monster",
@@ -2304,6 +2313,8 @@
       "sprite_index": 7,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "The Boss",
         "portrait": "Monster",
@@ -2322,6 +2333,8 @@
       "sprite_index": 2,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Merc",
         "portrait": "SF_Actor3",

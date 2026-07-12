@@ -894,6 +894,7 @@
     0,
     0
   ],
+  "counters": [],
   "npcs": [
     {
       "name": "EV003",
@@ -903,6 +904,8 @@
       "sprite_index": 0,
       "step_anime": false,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Amy",
         "portrait": "Amy",

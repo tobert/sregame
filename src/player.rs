@@ -199,7 +199,7 @@ fn apply_movement(
     time: Res<Time>,
     collision_map: Option<Res<CollisionMap>>,
     mut query: Query<(&Velocity, &mut Transform), With<Player>>,
-    npcs: Query<&Transform, (With<crate::npc::Npc>, Without<Player>)>,
+    npcs: Query<&Transform, (With<crate::npc::NpcBody>, Without<Player>)>,
     mut bumps: MessageWriter<BumpedIntoTile>,
 ) {
     let npc_centers: Vec<Vec2> = npcs.iter().map(|t| t.translation.truncate()).collect();

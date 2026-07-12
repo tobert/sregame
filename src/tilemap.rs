@@ -58,6 +58,9 @@ pub struct CollisionMap {
     pub height: u32,
     /// Per-cell 4-bit masks, RPGMaker orientation (row 0 = top).
     passability: Vec<u8>,
+    /// Counter cells (RPGMaker tile flag 0x80): the action button reaches
+    /// one tile across these. Filled from MapData::counters by spawn_map.
+    pub counters: std::collections::HashSet<(i32, i32)>,
 }
 
 impl CollisionMap {
@@ -66,6 +69,7 @@ impl CollisionMap {
             width,
             height,
             passability: vec![PASS_ALL; (width * height) as usize],
+            counters: Default::default(),
         }
     }
 
@@ -75,7 +79,12 @@ impl CollisionMap {
             (width * height) as usize,
             "passability data doesn't match map dimensions"
         );
-        Self { width, height, passability }
+        Self { width, height, passability, counters: Default::default() }
+    }
+
+    /// RPGMaker's Game_Map.isCounter.
+    pub fn is_counter(&self, x: i32, y: i32) -> bool {
+        self.counters.contains(&(x, y))
     }
 
     pub fn set_tile(&mut self, x: u32, y: u32, collision: TileCollision) {
@@ -342,6 +351,11 @@ fn spawn_map(
     for prop in map.props.iter().filter(|p| p.blocks) {
         collision_map.set_tile(prop.x, prop.y, TileCollision::Blocked);
     }
+    collision_map.counters = map
+        .counters
+        .iter()
+        .map(|&(x, y)| (x as i32, y as i32))
+        .collect();
     // NPCs deliberately do NOT bake into the tile map (they used to):
     // a full-tile block read as a boundary wider than the NPC's body yet
     // short enough for sprites to overlap vertically. They collide as
@@ -408,6 +422,15 @@ fn spawn_map(
         // Found via a mid-transfer BRP screenshot: a town NPC rendered in
         // the void outside the destination room.
         commands.entity(npc_entity).insert(Map);
+        // Solid body unless the original event is Through (doggo): the
+        // player's NPC collision (player.rs::npc_blocks_move) only sees
+        // NpcBody carriers.
+        if !npc_data.through {
+            commands.entity(npc_entity).insert(crate::npc::NpcBody);
+        }
+        if npc_data.wander {
+            commands.entity(npc_entity).insert(crate::npc::Wanderer::default());
+        }
 
         info!("Spawned NPC: {} at tile ({}, {})", npc_data.name, npc_data.x, npc_data.y);
     }

@@ -1910,6 +1910,36 @@
     0,
     0
   ],
+  "counters": [
+    [
+      15,
+      4
+    ],
+    [
+      15,
+      5
+    ],
+    [
+      21,
+      5
+    ],
+    [
+      15,
+      6
+    ],
+    [
+      16,
+      6
+    ],
+    [
+      17,
+      6
+    ],
+    [
+      21,
+      9
+    ]
+  ],
   "npcs": [
     {
       "name": "Pandora",
@@ -1919,6 +1949,8 @@
       "sprite_index": 5,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Pandora",
         "portrait": "Actor2",
@@ -1936,6 +1968,8 @@
       "sprite_index": 4,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Robert Bob",
         "portrait": "People4",
@@ -1953,6 +1987,8 @@
       "sprite_index": 7,
       "step_anime": false,
       "facing": "left",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Directrix Tina",
         "portrait": "SF_Actor1",
@@ -1970,6 +2006,8 @@
       "sprite_index": 0,
       "step_anime": false,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Cee Eeoh",
         "portrait": "People3",
@@ -1989,6 +2027,8 @@
       "sprite_index": 6,
       "step_anime": false,
       "facing": "up",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Vee Peapod",
         "portrait": "People4",
@@ -2007,6 +2047,8 @@
       "sprite_index": 5,
       "step_anime": false,
       "facing": "up",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Mistress of Scrum",
         "portrait": "Monster",
@@ -2024,6 +2066,8 @@
       "sprite_index": 4,
       "step_anime": true,
       "facing": "right",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Mervin",
         "portrait": "SF_Monster",

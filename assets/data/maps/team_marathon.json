@@ -2026,6 +2026,44 @@
     0,
     0
   ],
+  "counters": [
+    [
+      4,
+      4
+    ],
+    [
+      11,
+      9
+    ],
+    [
+      12,
+      9
+    ],
+    [
+      13,
+      9
+    ],
+    [
+      18,
+      10
+    ],
+    [
+      19,
+      10
+    ],
+    [
+      20,
+      10
+    ],
+    [
+      21,
+      10
+    ],
+    [
+      19,
+      13
+    ]
+  ],
   "npcs": [
     {
       "name": "Courage",
@@ -2035,6 +2073,8 @@
       "sprite_index": 2,
       "step_anime": true,
       "facing": "right",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Courage",
         "portrait": "Monster",
@@ -2053,6 +2093,8 @@
       "sprite_index": 0,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Ocean",
         "portrait": "People4",
@@ -2072,6 +2114,8 @@
       "sprite_index": 4,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Nyaanager Evie",
         "portrait": "Nature",
@@ -2091,6 +2135,8 @@
       "sprite_index": 5,
       "step_anime": true,
       "facing": "left",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Seventh Daughter of Nine",
         "portrait": "People2",
@@ -2109,6 +2155,8 @@
       "sprite_index": 1,
       "step_anime": true,
       "facing": "left",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Luna",
         "portrait": "People2",
@@ -2127,6 +2175,8 @@
       "sprite_index": 0,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Doctor McFire",
         "portrait": "DrMcfire",
@@ -2146,6 +2196,8 @@
       "sprite_index": 6,
       "step_anime": true,
       "facing": "right",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Hidaslo Xela",
         "portrait": "People3",
@@ -2164,6 +2216,8 @@
       "sprite_index": 0,
       "step_anime": false,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Boba Jacobian",
         "portrait": "casey",

@@ -5314,6 +5314,7 @@
     0,
     0
   ],
+  "counters": [],
   "npcs": [
     {
       "name": "Boba Jacobian",
@@ -5323,6 +5324,8 @@
       "sprite_index": 0,
       "step_anime": false,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Boba Jacobian",
         "portrait": "casey",
@@ -5340,6 +5343,8 @@
       "sprite_index": 5,
       "step_anime": false,
       "facing": "left",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Desi Goner",
         "portrait": "SF_Actor1",
@@ -5358,6 +5363,8 @@
       "sprite_index": 2,
       "step_anime": false,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Tenchi Reader",
         "portrait": "People1",
@@ -5377,6 +5384,8 @@
       "sprite_index": 2,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Courage",
         "portrait": "Monster",
@@ -5395,12 +5404,33 @@
       "sprite_index": 0,
       "step_anime": false,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Casey",
         "portrait": "casey",
         "face_index": 0,
         "lines": [
           "If you know who I am I don't know why you're surprised to find me here."
+        ]
+      }
+    },
+    {
+      "name": "doggo",
+      "x": 5,
+      "y": 21,
+      "sprite": "Nature",
+      "sprite_index": 0,
+      "step_anime": true,
+      "facing": "right",
+      "wander": true,
+      "through": true,
+      "dialogue": {
+        "speaker": "doggo",
+        "portrait": "",
+        "face_index": 0,
+        "lines": [
+          "wan wan!"
         ]
       }
     },
@@ -5412,6 +5442,8 @@
       "sprite_index": 7,
       "step_anime": false,
       "facing": "right",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Nanny Ogg Vorbis",
         "portrait": "People1",
@@ -5430,6 +5462,8 @@
       "sprite_index": 4,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Glenn Gary",
         "portrait": "Actor1",
@@ -5451,6 +5485,8 @@
       "sprite_index": 3,
       "step_anime": false,
       "facing": "right",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Agi Lecoach",
         "portrait": "Actor2",
@@ -5472,6 +5508,8 @@
       "sprite_index": 3,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Paws Alljohn",
         "portrait": "Evil",
@@ -5491,6 +5529,8 @@
       "sprite_index": 4,
       "step_anime": true,
       "facing": "down",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Johnny Mnemomena",
         "portrait": "SF_Monster",
@@ -5509,6 +5549,8 @@
       "sprite_index": 7,
       "step_anime": true,
       "facing": "left",
+      "wander": false,
+      "through": false,
       "dialogue": {
         "speaker": "Frau Barella",
         "portrait": "People4",
@@ -5601,19 +5643,6 @@
     }
   ],
   "props": [
-    {
-      "name": "doggo",
-      "x": 5,
-      "y": 21,
-      "sprite": "Nature",
-      "sprite_index": 0,
-      "facing": "right",
-      "pattern": 0,
-      "step_anime": true,
-      "blocks": false,
-      "frame_width": 48,
-      "frame_height": 48
-    },
     {
       "name": "The Boss's Truck",
       "x": 8,
