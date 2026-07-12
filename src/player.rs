@@ -9,6 +9,8 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Player>()
+            .register_type::<Velocity>()
+            .register_type::<Facing>()
             .add_systems(OnEnter(GameState::Playing), spawn_player)
             .add_systems(Update, (
                 player_movement_input,
@@ -22,10 +24,12 @@ impl Plugin for PlayerPlugin {
 #[reflect(Component)]
 pub struct Player;
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 pub struct Velocity(pub Vec2);
 
-#[derive(Component, Default)]
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 pub enum Facing {
     #[default]
     Down,

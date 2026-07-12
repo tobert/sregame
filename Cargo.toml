@@ -20,7 +20,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 chrono = "0.4"
-bevy_remote = "0.17.2"
+bevy_brp_extras = "0.17"
 
 # Faster compile times during development
 [profile.dev]

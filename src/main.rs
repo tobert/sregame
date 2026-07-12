@@ -2,8 +2,6 @@ use bevy::prelude::*;
 use bevy::app::ScheduleRunnerPlugin;
 use bevy::window::ExitCondition;
 use bevy::winit::WinitPlugin;
-use bevy_remote::{RemotePlugin};
-use bevy_remote::http::RemoteHttpPlugin;
 use bevy::window::{WindowMode, MonitorSelection};
 use clap::Parser;
 use std::time::Duration;
@@ -18,6 +16,7 @@ mod dialogue;
 mod npc;
 mod map_data;
 mod viewport;
+mod semantic_state;
 mod telemetry;
 mod instrumentation;
 mod transitions;
@@ -30,6 +29,7 @@ use tilemap::TilemapPlugin;
 use dialogue::DialoguePlugin;
 use npc::NpcPlugin;
 use viewport::SemanticViewportPlugin;
+use semantic_state::SemanticStatePlugin;
 use transitions::TransitionsPlugin;
 
 /// The Endgame of SRE - An educational game about Site Reliability Engineering
@@ -42,9 +42,16 @@ struct Args {
     #[arg(long)]
     otlp_endpoint: Option<String>,
 
-    /// Run with the Bevy Remote Protocol enabled
+    /// Run with the Bevy Remote Protocol enabled (adds brp_extras methods:
+    /// screenshot, send_keys, shutdown, set_window_title)
     #[arg(long)]
     remote: bool,
+
+    /// Port for the Bevy Remote Protocol HTTP server. The default (15702) is
+    /// sometimes occupied by other Bevy apps on this machine - pick another
+    /// port rather than fighting over it.
+    #[arg(long, default_value_t = 15702)]
+    remote_port: u16,
 
     /// Exit the game after N frames
     #[arg(long)]
@@ -55,9 +62,14 @@ struct Args {
     seconds: Option<f32>,
 
     /// Run in headless mode (no window, no GPU required)
-    /// Perfect for CI/CD, automated testing, and environments without display servers
+    /// Perfect for CI/CD, automated testing, and environments without display servers.
+    /// For GPU-rendered headless (real frames, screenshots), see scripts/run-headless.sh
     #[arg(long)]
     headless: bool,
+
+    /// Run in borderless fullscreen instead of a 1920x1080 window
+    #[arg(long)]
+    fullscreen: bool,
 
     /// OTLP metric export interval in milliseconds (default: 10000)
     #[arg(long)]
@@ -143,6 +155,12 @@ fn main() {
             Duration::from_secs_f64(1.0 / 60.0)
         ));
     } else {
+        let window_mode = if args.fullscreen {
+            WindowMode::BorderlessFullscreen(MonitorSelection::Current)
+        } else {
+            WindowMode::Windowed
+        };
+
         app.add_plugins(
             DefaultPlugins
                 .set(ImagePlugin::default_nearest())
@@ -151,7 +169,7 @@ fn main() {
                         title: "The Endgame of SRE".to_string(),
                         resolution: (1920, 1080).into(),
                         resizable: false,
-                        mode: WindowMode::BorderlessFullscreen(MonitorSelection::Current),
+                        mode: window_mode,
                         ..default()
                     }),
                     ..default()
@@ -161,7 +179,7 @@ fn main() {
     }
 
     if args.remote {
-        app.add_plugins((RemotePlugin::default(), RemoteHttpPlugin::default()));
+        app.add_plugins(bevy_brp_extras::BrpExtrasPlugin::with_port(args.remote_port));
     }
 
     // Insert CLI args as resource
@@ -185,6 +203,7 @@ fn main() {
             DialoguePlugin,
             NpcPlugin,
             SemanticViewportPlugin,
+            SemanticStatePlugin,
             TransitionsPlugin,
         ))
         .add_systems(Startup, setup)
