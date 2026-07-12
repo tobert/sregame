@@ -268,6 +268,14 @@ fn spawn_map(
     for prop in map.props.iter().filter(|p| p.blocks) {
         collision_map.set_tile(prop.x, prop.y, TileCollision::Blocked);
     }
+    // NPCs block their tile the same way (verified against the original:
+    // every NPC event is priority 1 / through=false; only doggo is
+    // through, and doggo is a prop). NPCs never move, so baking their
+    // spawn tile is exact. Interaction is unaffected: the E-key radius
+    // (64px) spans the blocked tile from the one you stop in.
+    for npc in &map.npcs {
+        collision_map.set_tile(npc.x, npc.y, TileCollision::Blocked);
+    }
     commands.insert_resource(collision_map);
     commands.insert_resource(MapExits(map.exits.clone()));
 
