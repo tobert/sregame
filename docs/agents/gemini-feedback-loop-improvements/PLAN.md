@@ -33,11 +33,16 @@ Current State: `cargo run ... --seconds 5` runs the game, but agents can't inter
 ### Feature Requests
 
 #### 2.1. Bevy Remote Protocol (BRP) Driver
+*   **Status:** ✅ **Implemented** (2026-07-12, via `bevy_brp_extras` + `--remote`/`--remote-port`)
 *   **Problem:** Agents currently just "watch" the game run.
-*   **Solution:** Implement a BRP client (or simple `curl` scripts in the `scripts/` dir) that agents can use to:
-    *   Teleport the player: `bevy/query` + `bevy/spawn` or custom events.
-    *   Trigger interactions: Send `InteractionEvent`.
-    *   Advance dialogue: Send input events.
+*   **What shipped:** `--remote` serves standard BRP (query/mutate/spawn)
+    plus `brp_extras/send_keys` (walk Amy, press E, advance dialogue),
+    `brp_extras/screenshot`, and `brp_extras/shutdown`. Plain `curl`
+    JSON-RPC works; `bevy_brp_mcp` exposes the same as native MCP tools.
+    Verified end-to-end (launch → screenshot → shutdown) under gamescope.
+    See `docs/agents/AUTONOMY_GUIDE.md`. (An earlier draft claimed a
+    `scripts/agent_drive.sh` existed — it never did; the guide's verified
+    curl recipes replace it.)
 
 ## 3. Visual Data (The "Vision")
 

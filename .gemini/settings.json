@@ -8,6 +8,10 @@
         "44317"
       ],
       "trust": true
+    },
+    "bevy_brp_mcp": {
+      "command": "/home/atobey/src/bevy_brp/target/debug/bevy_brp_mcp",
+      "args": []
     }
   }
 }

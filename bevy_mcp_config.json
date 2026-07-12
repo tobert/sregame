@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "bevy_game": {
+      "command": "bevy_brp_mcp",
+      "args": []
+    }
+  }
+}
