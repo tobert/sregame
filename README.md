@@ -14,7 +14,7 @@ Originally presented as the [SREcon23 Americas keynote](https://www.youtube.com/
 - **SRE best practices** in a story-driven format
 
 **Technical Stack:**
-- Engine: Bevy 0.17 (Rust game engine)
+- Engine: Bevy 0.19 (Rust game engine)
 - Graphics: Pixel art JRPG style (48x48 tiles, 960x540 resolution)
 - Assets: Visustella Fantasy Tiles MZ (licensed)
 
@@ -219,7 +219,7 @@ This is an educational project. See `BOTS.md` for coding guidelines and AI agent
 
 **Key Guidelines:**
 - Use `anyhow::Result` for error handling (never `unwrap()`)
-- Follow Bevy 0.17 best practices (required components, state management)
+- Follow Bevy 0.19 best practices (required components, state management)
 - Prioritize clarity over performance
 - Add `Co-authored-by` lines to commits when working with AI assistants
 
