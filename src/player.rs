@@ -56,6 +56,18 @@ impl Facing {
             Facing::Up => 3,
         }
     }
+
+    /// Tile-space offset of the cell the player is looking at (RPGMaker
+    /// orientation: +y is down). Used by interaction reach (counters,
+    /// facing-adjacent action exits).
+    pub fn tile_delta(&self) -> (i32, i32) {
+        match self {
+            Facing::Down => (0, 1),
+            Facing::Left => (-1, 0),
+            Facing::Right => (1, 0),
+            Facing::Up => (0, -1),
+        }
+    }
 }
 
 /// Amy's slot in Amy-Walking.png (Actors.json: actor 1, characterIndex 0).

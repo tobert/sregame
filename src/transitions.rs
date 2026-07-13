@@ -144,7 +144,7 @@ fn animate_door_departure(
 
 fn check_map_exits(
     mut commands: Commands,
-    player_query: Query<&Transform, With<Player>>,
+    player_query: Query<(&Transform, &crate::player::Facing), With<Player>>,
     map_exits: Option<Res<MapExits>>,
     collision_map: Option<Res<CollisionMap>>,
     doors: Query<(Entity, &Door)>,
@@ -169,7 +169,7 @@ fn check_map_exits(
     let Some(collision_map) = collision_map else {
         return;
     };
-    let Ok(player_transform) = player_query.single() else {
+    let Ok((player_transform, facing)) = player_query.single() else {
         return;
     };
 
@@ -178,6 +178,14 @@ fn check_map_exits(
         collision_map.width,
         collision_map.height,
     );
+
+    // The tile the player is looking at: action exits also fire when FACED
+    // from one tile away (RPGMaker's checkEventTriggerThere), not only when
+    // stood on. Amy's playtest: walking up to the retro table and pressing
+    // E while facing the parchment did nothing until she happened to stand
+    // on the trigger itself.
+    let (face_dx, face_dy) = facing.tile_delta();
+    let (faced_x, faced_y) = (tile_x + face_dx, tile_y + face_dy);
 
     // A touch exit fires when the player stands on its tile (walkable exit
     // mats: the interior "To Town" tiles) OR bumps into it (RPGMaker
@@ -198,8 +206,8 @@ fn check_map_exits(
                 .any(|&(cx, cy)| exit.trigger_x as i32 == cx && exit.trigger_y as i32 == cy),
             ExitTrigger::Action => {
                 keyboard.just_pressed(KeyCode::KeyE)
-                    && exit.trigger_x as i32 == tile_x
-                    && exit.trigger_y as i32 == tile_y
+                    && ((exit.trigger_x as i32 == tile_x && exit.trigger_y as i32 == tile_y)
+                        || (exit.trigger_x as i32 == faced_x && exit.trigger_y as i32 == faced_y))
             }
         };
         if !hit {
@@ -302,7 +310,7 @@ mod tests {
         world.insert_resource(CollisionMap::new(width, height));
 
         let world_pos = tile_to_world(player_tile.0, player_tile.1, width, height);
-        world.spawn((Player, Transform::from_xyz(world_pos.x, world_pos.y, 1.0)));
+        world.spawn((Player, crate::player::Facing::Up, Transform::from_xyz(world_pos.x, world_pos.y, 1.0)));
 
         world
     }
@@ -345,6 +353,50 @@ mod tests {
         vec![
             ExitData { trigger_x: 12, trigger_y: 12, target_scene: "End".into(), target_spawn_x: 8, target_spawn_y: 5, trigger: ExitTrigger::Action, dialogue: vec![], cancel_on_escape: false },
         ]
+    }
+
+    /// RPGMaker's checkEventTriggerThere: an action event also activates
+    /// when the player FACES it from the adjacent tile. Amy walked up to
+    /// the retro table, faced the parchment, pressed E, and nothing
+    /// happened until she happened to be standing on the trigger itself.
+    #[test]
+    fn action_exit_fires_when_faced_from_one_tile_away() {
+        // Player one tile SOUTH of the trigger, facing Up (the harness
+        // default) - looking straight at it.
+        let mut world = setup_world((12, 13), retro_action_exit(), 24, 21);
+        world
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::KeyE);
+
+        world.run_system_once(check_map_exits).unwrap();
+
+        let next = world.resource::<NextState<Scene>>();
+        assert!(
+            matches!(next, NextState::Pending(Scene::End)),
+            "E while facing the action tile should transfer, got {next:?}"
+        );
+    }
+
+    #[test]
+    fn action_exit_ignores_the_press_when_facing_away() {
+        let mut world = setup_world((12, 13), retro_action_exit(), 24, 21);
+        // Turn the player's back to the trigger.
+        let player = world
+            .query_filtered::<Entity, With<Player>>()
+            .single(&world)
+            .unwrap();
+        *world.get_mut::<crate::player::Facing>(player).unwrap() =
+            crate::player::Facing::Down;
+        world
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::KeyE);
+
+        world.run_system_once(check_map_exits).unwrap();
+
+        assert!(
+            matches!(world.resource::<NextState<Scene>>(), NextState::Unchanged),
+            "E with the trigger behind the player must do nothing"
+        );
     }
 
     #[test]
@@ -525,7 +577,7 @@ mod tests {
         world.insert_resource(MapExits(intro_exits()));
         world.insert_resource(CollisionMap::new(WIDTH, HEIGHT));
         let world_pos = tile_to_world(8, 1, WIDTH, HEIGHT);
-        world.spawn((Player, Transform::from_xyz(world_pos.x, world_pos.y, 1.0)));
+        world.spawn((Player, crate::player::Facing::Up, Transform::from_xyz(world_pos.x, world_pos.y, 1.0)));
 
         world.run_system_once(check_map_exits).unwrap();
 

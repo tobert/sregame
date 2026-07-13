@@ -347,18 +347,21 @@ fn handle_interaction_input(
 
     let player_pos = player_transform.translation.truncate();
 
-    // An action exit under the player owns the E press - without this, E
-    // on the retro-dialog tile with an NPC in range would fire both the
-    // scripted scene AND that NPC's dialogue in the same frame (kaibo
-    // review 2026-07-12).
+    // An action exit under the player - or on the tile they're facing
+    // (both activate it, see check_map_exits) - owns the E press. Without
+    // this, E on/at the retro-dialog tile with an NPC in range would fire
+    // both the scripted scene AND that NPC's dialogue in the same frame
+    // (kaibo review 2026-07-12).
     if let (Some(exits), Some(map)) = (&map_exits, &collision_map) {
         let (tile_x, tile_y) = crate::map_data::world_to_tile(player_pos, map.width, map.height);
-        let on_action_exit = exits.0.iter().any(|exit| {
+        let (dx, dy) = player_facing.tile_delta();
+        let claims_press = exits.0.iter().any(|exit| {
             exit.trigger == crate::map_data::ExitTrigger::Action
-                && exit.trigger_x as i32 == tile_x
-                && exit.trigger_y as i32 == tile_y
+                && ((exit.trigger_x as i32 == tile_x && exit.trigger_y as i32 == tile_y)
+                    || (exit.trigger_x as i32 == tile_x + dx
+                        && exit.trigger_y as i32 == tile_y + dy))
         });
-        if on_action_exit {
+        if claims_press {
             return;
         }
     }
@@ -385,12 +388,7 @@ fn handle_interaction_input(
     // center-to-center and a counter puts ~96px between the two.
     let closest_npc = closest_npc.or_else(|| {
         let map = collision_map.as_ref()?;
-        let (dx, dy) = match player_facing {
-            crate::player::Facing::Down => (0, 1),
-            crate::player::Facing::Left => (-1, 0),
-            crate::player::Facing::Right => (1, 0),
-            crate::player::Facing::Up => (0, -1),
-        };
+        let (dx, dy) = player_facing.tile_delta();
         let (px, py) = crate::map_data::world_to_tile(player_pos, map.width, map.height);
         if !map.is_counter(px + dx, py + dy) {
             return None;
