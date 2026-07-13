@@ -3,8 +3,9 @@
 ## Project Overview
 
 **sregame** (The Endgame of SRE) is a mini educational game that Amy Tobey
-presented at SRECon NA 2022. It was originally written in RPGMaker MZ.
-This version is written in Rust using the Bevy 0.17 game engine.
+presented as the SREcon23 Americas keynote
+(https://www.youtube.com/watch?v=BEs6j-BOl20). It was originally written in
+RPGMaker MZ. This version is written in Rust using the Bevy 0.19 game engine.
 
 **The Endgame of SRE** teaches SRE principles through character interactions in a pixel art visual novel format.
 - **No combat** - pure exploration and dialogue
@@ -13,11 +14,11 @@ This version is written in Rust using the Bevy 0.17 game engine.
 
 ## Technology
 
-- **Language**: Rust 1.80+ with Bevy 0.17
-- **Game Engine**: Bevy 0.17 (ECS architecture)
+- **Language**: Rust 1.80+ with Bevy 0.19
+- **Game Engine**: Bevy 0.19 (ECS architecture)
 - **Asset Format**: Pixel art (48x48 tiles, 960x540 base, 2x upscaled to 1920x1080)
 - **Key Dependencies**:
-  - bevy 0.17 (game engine)
+  - bevy 0.19 (game engine)
   - bevy_ecs_tilemap (tilemap rendering)
   - anyhow (error handling)
   - serde/serde_json (data serialization)

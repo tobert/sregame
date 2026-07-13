@@ -2,7 +2,7 @@
 
 A Bevy-based educational game teaching SRE principles through a pixel art visual novel experience.
 
-Originally presented at SRECon NA 2022 and built with RPGMaker MZ, this version is a complete rewrite in Rust using the Bevy 0.17 game engine.
+Originally presented as the [SREcon23 Americas keynote](https://www.youtube.com/watch?v=BEs6j-BOl20) and built with RPGMaker MZ, this version is a complete rewrite in Rust using the Bevy game engine (0.19).
 
 ## About
 
@@ -230,6 +230,7 @@ See `LICENSE` file.
 ## References
 
 - Original RPGMaker version: `/home/atobey/src/endgame-of-sre-rpgmaker-mz/`
-- SRECon NA 2022 presentation: [Link TBD]
+- SREcon23 Americas keynote recording: https://www.youtube.com/watch?v=BEs6j-BOl20
+- USENIX presentation page: https://www.usenix.org/conference/srecon23americas/presentation/tobey
 - Bevy Engine: https://bevyengine.org
 - HalfRemembered Launcher: https://github.com/atobey/halfremembered-launcher
