@@ -764,9 +764,9 @@
     0,
     0,
     0,
-    0,
-    0,
-    0,
+    15,
+    15,
+    15,
     0,
     0,
     0,
@@ -1569,7 +1569,53 @@
       }
     }
   ],
-  "exits": [],
+  "exits": [
+    {
+      "trigger_x": 7,
+      "trigger_y": 5,
+      "target_scene": "TownOfEndgame",
+      "target_spawn_x": 16,
+      "target_spawn_y": 16,
+      "trigger": "touch",
+      "dialogue": []
+    },
+    {
+      "trigger_x": 9,
+      "trigger_y": 5,
+      "target_scene": "TownOfEndgame",
+      "target_spawn_x": 16,
+      "target_spawn_y": 16,
+      "trigger": "touch",
+      "dialogue": []
+    }
+  ],
   "doors": [],
-  "props": []
+  "props": [
+    {
+      "name": "Return Fairy",
+      "x": 7,
+      "y": 5,
+      "sprite": "Nature",
+      "sprite_index": 5,
+      "facing": "down",
+      "pattern": 1,
+      "step_anime": true,
+      "blocks": false,
+      "frame_width": 48,
+      "frame_height": 48
+    },
+    {
+      "name": "Return Fairy",
+      "x": 9,
+      "y": 5,
+      "sprite": "Nature",
+      "sprite_index": 5,
+      "facing": "down",
+      "pattern": 1,
+      "step_anime": true,
+      "blocks": false,
+      "frame_width": 48,
+      "frame_height": 48
+    }
+  ]
 }

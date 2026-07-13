@@ -469,6 +469,47 @@ mod tests {
     }
 
     #[test]
+    fn end_tableau_offers_a_way_back_to_town() {
+        // The original End map is a frozen credits tableau: every tile is
+        // impassable and there are no exits, because during the live SRECon
+        // talk the game simply ended there. Standalone/web players must not
+        // be stuck: the converter synthesizes a fairy on each side of the
+        // player spawn (8,5) whose touch exit zaps the player back to the
+        // Town of Endgame plaza (see add_end_return_portals in
+        // tools/convert_maps.py).
+        let map = MapData::load("end").expect("end map should load");
+
+        let mut return_tiles: Vec<(u32, u32)> = map
+            .exits
+            .iter()
+            .filter(|e| {
+                e.target_scene == "TownOfEndgame" && e.trigger == ExitTrigger::Touch
+            })
+            .map(|e| (e.trigger_x, e.trigger_y))
+            .collect();
+        return_tiles.sort();
+        assert_eq!(
+            return_tiles,
+            vec![(7, 5), (9, 5)],
+            "End must have touch exits back to town flanking the player spawn (8,5)"
+        );
+
+        // The player must be able to walk from the spawn onto both exit
+        // tiles, and each exit tile carries a visible sprite so the way out
+        // reads as intentional.
+        for (x, y) in [(7, 5), (8, 5), (9, 5)] {
+            let nibble = map.passability[(y * map.width + x) as usize];
+            assert_eq!(nibble, 15, "End pocket tile ({x},{y}) must be fully passable");
+        }
+        for (x, y) in [(7u32, 5u32), (9, 5)] {
+            assert!(
+                map.props.iter().any(|p| p.x == x && p.y == y),
+                "End exit tile ({x},{y}) needs a visible sprite marking the way out"
+            );
+        }
+    }
+
+    #[test]
     fn shipped_town_passability_carries_directional_cells() {
         // Pins the passability pipeline end to end against the real
         // converted data: town (23,2) is a storefront edge that RPGMaker

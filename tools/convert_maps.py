@@ -656,6 +656,57 @@ def repair_buried_signs(rpg_data, tileset_entry):
     return repaired
 
 
+# The End tableau's frozen player spawn is (8,5); these flank it.
+END_PORTAL_TILES = ((7, 5), (9, 5))
+END_PLAYER_POCKET = ((7, 5), (8, 5), (9, 5))
+# Town of Endgame plaza, comfortably open ground (nibble 15 all around).
+END_RETURN_SPAWN = (16, 16)
+PASS_ALL_NIBBLE = 15
+
+
+def add_end_return_portals(clean_data, output_name):
+    """Give the End credits tableau a way out (SYNTHESIZED content - not in
+    the RPGMaker original). The original End map freezes the player on an
+    all-impassable map with no exits: during the live SRECon 2022 talk the
+    game simply ended there, but standalone/web players would be stuck with
+    nothing to do but reload. Adds: a 3-tile movement pocket around the
+    player spawn (8,5), a fairy (Nature slot 5, fluttering) on each side,
+    and touch exits under the fairies that zap the player back to the Town
+    of Endgame plaza. Mutates clean_data in place; returns True if applied."""
+    if output_name != "end.json":
+        return False
+
+    width = clean_data['width']
+    for (x, y) in END_PLAYER_POCKET:
+        clean_data['passability'][y * width + x] = PASS_ALL_NIBBLE
+
+    spawn_x, spawn_y = END_RETURN_SPAWN
+    for (x, y) in END_PORTAL_TILES:
+        clean_data['exits'].append({
+            "trigger_x": x,
+            "trigger_y": y,
+            "target_scene": "TownOfEndgame",
+            "target_spawn_x": spawn_x,
+            "target_spawn_y": spawn_y,
+            "trigger": "touch",
+            "dialogue": [],
+        })
+        clean_data['props'].append({
+            "name": "Return Fairy",
+            "x": x,
+            "y": y,
+            "sprite": "Nature",
+            "sprite_index": 5,
+            "facing": "down",
+            "pattern": 1,
+            "step_anime": True,
+            "blocks": False,
+            "frame_width": 48,
+            "frame_height": 48,
+        })
+    return True
+
+
 def convert_tiles_and_collision(rpg_data, tileset_entry, compositor):
     """Bake one map's tiles/upper_tiles/collision using the given
     (possibly shared) TileCompositor. Callers that pass the *same*
@@ -834,6 +885,9 @@ def convert_map(rpgmaker_map_path, output_path, tileset_entry, compositor):
         "doors": doors,
         "props": props,
     }
+
+    if add_end_return_portals(clean_data, output_path.name):
+        print(f"  Added return portals to {output_path.name}")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, 'w', encoding='utf-8') as f:

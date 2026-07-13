@@ -94,11 +94,57 @@ def test_inside_tileset_maps_are_untouched() -> None:
         check(f"{name} data unchanged", rpg["data"] == before, True)
 
 
+def fresh_end_clean_data() -> dict:
+    # Minimal clean_data shape for the End map (17x13): all-impassable
+    # passability, no exits/props - what convert_map assembles before the
+    # portal pass runs.
+    return {
+        "width": 17,
+        "height": 13,
+        "passability": [0] * (17 * 13),
+        "exits": [],
+        "props": [],
+    }
+
+
+def test_end_gets_return_portals() -> None:
+    data = fresh_end_clean_data()
+    check("applied to end.json", cm.add_end_return_portals(data, "end.json"), True)
+
+    check("exit count", len(data["exits"]), 2)
+    for exit_data, (x, y) in zip(data["exits"], cm.END_PORTAL_TILES):
+        check(f"exit at ({x},{y}) trigger_x", exit_data["trigger_x"], x)
+        check(f"exit at ({x},{y}) trigger_y", exit_data["trigger_y"], y)
+        check(f"exit at ({x},{y}) target", exit_data["target_scene"], "TownOfEndgame")
+        check(f"exit at ({x},{y}) trigger type", exit_data["trigger"], "touch")
+
+    check("prop count", len(data["props"]), 2)
+    for prop, (x, y) in zip(data["props"], cm.END_PORTAL_TILES):
+        check(f"fairy at ({x},{y})", (prop["x"], prop["y"]), (x, y))
+        check(f"fairy at ({x},{y}) flutters", prop["step_anime"], True)
+        check(f"fairy at ({x},{y}) doesn't block", prop["blocks"], False)
+
+    # Player pocket opened, everything else still sealed.
+    w = data["width"]
+    opened = {(i % w, i // w) for i, n in enumerate(data["passability"]) if n != 0}
+    check("opened cells", opened, set(cm.END_PLAYER_POCKET))
+
+
+def test_return_portals_only_apply_to_end() -> None:
+    data = fresh_end_clean_data()
+    check("not applied elsewhere", cm.add_end_return_portals(data, "town_of_endgame.json"), False)
+    check("no exits added", data["exits"], [])
+    check("no props added", data["props"], [])
+    check("passability untouched", any(data["passability"]), False)
+
+
 def main() -> int:
     test_town_buried_signs_are_unburied()
     test_lone_blank_sign_is_kept()
     test_repair_only_touches_the_buried_sign_cells()
     test_inside_tileset_maps_are_untouched()
+    test_end_gets_return_portals()
+    test_return_portals_only_apply_to_end()
 
     if FAILURES:
         print(f"FAILED ({len(FAILURES)}):")
