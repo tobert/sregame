@@ -147,17 +147,19 @@ fn spawn_dialogue_ui(
         text: String::new(),
     });
 
+    // Presentation-scale layout: the box claims the bottom third of the
+    // window so the text can be read from the back of a conference room.
     commands.spawn((
         DialogueRoot,
         Node {
             position_type: PositionType::Absolute,
-            bottom: Val::Px(20.0),
-            left: Val::Px(20.0),
-            right: Val::Px(20.0),
-            height: Val::Px(180.0),
-            padding: UiRect::all(Val::Px(20.0)),
+            bottom: Val::Px(0.0),
+            left: Val::Px(0.0),
+            right: Val::Px(0.0),
+            height: Val::Percent(33.3),
+            padding: UiRect::all(Val::Px(24.0)),
             flex_direction: FlexDirection::Row,
-            column_gap: Val::Px(15.0),
+            column_gap: Val::Px(24.0),
             ..default()
         },
         BackgroundColor(Color::srgba(0.1, 0.1, 0.15, 0.95)),
@@ -166,14 +168,15 @@ fn spawn_dialogue_ui(
     .with_children(|parent| {
         // The portrait node always exists so later segments can swap faces
         // in (or hide it) without re-spawning UI - Display::None when the
-        // current segment has no portrait.
+        // current segment has no portrait. Square aspect + full height so
+        // it scales with the box instead of a hardcoded pixel size.
         let (image_node, display) = portrait_for_segment(&first, &asset_server, &atlas_layout);
         parent.spawn((
             PortraitNode,
             image_node,
             Node {
-                width: Val::Px(128.0),
-                height: Val::Px(128.0),
+                height: Val::Percent(100.0),
+                aspect_ratio: Some(1.0),
                 display,
                 ..default()
             },
@@ -193,7 +196,7 @@ fn spawn_dialogue_ui(
                 Text::new(first.speaker.clone()),
                 TextFont {
                     font: font.clone(),
-                    font_size: 28.0,
+                    font_size: 52.0,
                     ..default()
                 },
                 TextColor(Color::srgb(1.0, 0.85, 0.3)),
@@ -204,7 +207,7 @@ fn spawn_dialogue_ui(
                 Text::new(""),
                 TextFont {
                     font: font.clone(),
-                    font_size: 24.0,
+                    font_size: 46.0,
                     ..default()
                 },
                 TextColor(Color::WHITE),
