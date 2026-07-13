@@ -10,17 +10,31 @@ anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 clap = { version = "4.5", features = ["derive"] }
-
-# OpenTelemetry for logging and tracing (latest versions)
-opentelemetry = "0.31"
-opentelemetry_sdk = { version = "0.31", features = ["rt-tokio"] }
-opentelemetry-otlp = { version = "0.31", features = ["logs", "trace", "metrics", "grpc-tonic"] }
-opentelemetry-appender-tracing = "0.31"
 tracing = "0.1"
+# OpenTelemetry API crate only (pure, no tokio/tonic): universal so the span
+# types in instrumentation.rs compile on wasm. The SDK/exporter stack that
+# actually ships telemetry is native-only below.
+opentelemetry = "0.32"
+# std::time::Instant panics at runtime on wasm32-unknown-unknown; web-time is
+# a drop-in that delegates to std on native and performance.now() on wasm.
+web-time = "1"
+
+# Telemetry export (OTLP over gRPC), the tokio runtime it needs, and the BRP
+# dev server: none of these compile for wasm32, and all are runtime-optional
+# anyway (--otlp-endpoint / --remote).
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+opentelemetry_sdk = { version = "0.32", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.32", features = ["logs", "trace", "metrics", "grpc-tonic"] }
+opentelemetry-appender-tracing = "0.32"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 chrono = "0.4"
 bevy_brp_extras = "0.21"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# WebGL2 has no texture arrays; the atlas feature makes bevy_ecs_tilemap
+# render from a plain atlas texture instead. Native keeps the default path.
+bevy_ecs_tilemap = { version = "0.19", features = ["atlas"] }
 
 # Faster compile times during development
 [profile.dev]

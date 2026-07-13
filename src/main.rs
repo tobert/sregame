@@ -1,9 +1,12 @@
 use bevy::prelude::*;
-use bevy::app::ScheduleRunnerPlugin;
-use bevy::window::ExitCondition;
-use bevy::winit::WinitPlugin;
-use bevy::window::{WindowMode, MonitorSelection};
 use clap::Parser;
+#[cfg(not(target_arch = "wasm32"))]
+use bevy::app::ScheduleRunnerPlugin;
+#[cfg(not(target_arch = "wasm32"))]
+use bevy::window::{ExitCondition, MonitorSelection, WindowMode};
+#[cfg(not(target_arch = "wasm32"))]
+use bevy::winit::WinitPlugin;
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::Duration;
 
 mod game_state;
@@ -18,6 +21,7 @@ mod map_data;
 mod asset_manifest;
 mod viewport;
 mod semantic_state;
+#[cfg(not(target_arch = "wasm32"))]
 mod telemetry;
 mod instrumentation;
 mod transitions;
@@ -80,6 +84,67 @@ struct Args {
 }
 
 fn main() {
+    #[cfg(not(target_arch = "wasm32"))]
+    native_main();
+    #[cfg(target_arch = "wasm32")]
+    web_main();
+}
+
+/// The game itself - everything that is identical on native and web.
+fn add_game(app: &mut App) {
+    app.add_plugins((
+        GameStatePlugin,
+        AssetsPlugin,
+        PlayerPlugin,
+        CameraPlugin,
+        TilemapPlugin,
+        DialoguePlugin,
+        NpcPlugin,
+        SemanticViewportPlugin,
+        SemanticStatePlugin,
+        TransitionsPlugin,
+        DepthPlugin,
+    ))
+    .add_systems(Startup, setup)
+    .add_systems(OnEnter(GameState::Playing), on_enter_playing)
+    .add_systems(OnEnter(Mode::Dialogue), on_enter_dialogue)
+    .add_systems(Update, exit_after_n_frames_or_seconds);
+}
+
+/// Browser entry point: no CLI args or env vars exist, telemetry/BRP/headless
+/// are native-only, and Bevy's LogPlugin stays enabled because it is what
+/// routes logs to the browser console.
+#[cfg(target_arch = "wasm32")]
+fn web_main() {
+    // Deterministic defaults; parse() would read (empty) wasm process args.
+    let args = Args::parse_from(["sregame"]);
+
+    let mut app = App::new();
+    app.add_plugins(
+        DefaultPlugins
+            .set(ImagePlugin::default_nearest())
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "The Endgame of SRE".to_string(),
+                    // Track the canvas' parent element size instead of a
+                    // fixed 1920x1080 desktop window.
+                    fit_canvas_to_parent: true,
+                    // Space advances dialogue and arrows walk - the page
+                    // must not scroll out from under the game.
+                    prevent_default_event_handling: true,
+                    ..default()
+                }),
+                ..default()
+            }),
+    );
+
+    app.insert_resource(args);
+    add_game(&mut app);
+    app.run();
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn native_main() {
     let args = Args::parse();
 
     // Determine OTLP endpoint: CLI flag takes precedence over env var
@@ -196,25 +261,8 @@ fn main() {
         app.insert_resource(m);
     }
 
-    app
-        .add_plugins((
-            GameStatePlugin,
-            AssetsPlugin,
-            PlayerPlugin,
-            CameraPlugin,
-            TilemapPlugin,
-            DialoguePlugin,
-            NpcPlugin,
-            SemanticViewportPlugin,
-            SemanticStatePlugin,
-            TransitionsPlugin,
-            DepthPlugin,
-        ))
-        .add_systems(Startup, setup)
-        .add_systems(OnEnter(GameState::Playing), on_enter_playing)
-        .add_systems(OnEnter(Mode::Dialogue), on_enter_dialogue)
-        .add_systems(Update, exit_after_n_frames_or_seconds)
-        .run();
+    add_game(&mut app);
+    app.run();
 
     // Shutdown telemetry when app exits
     info!("Shutting down instrumentation providers");

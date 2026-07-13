@@ -3,7 +3,7 @@ use crate::game_state::Mode;
 use crate::assets::GameAssets;
 use crate::instrumentation::{GameTracer, GameMeter, ActiveDialogue, record_dialogue_line_event};
 use opentelemetry::{KeyValue, Context as OtelContext, trace::{Tracer, Span as _}};
-use std::time::Instant;
+use web_time::Instant;
 
 pub struct DialoguePlugin;
 

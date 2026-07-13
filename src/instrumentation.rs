@@ -1,20 +1,34 @@
 use bevy::prelude::*;
-use opentelemetry::trace::{Span as _, SpanContext, Tracer, TracerProvider as _};
+use opentelemetry::global::{BoxedSpan, BoxedTracer};
+use opentelemetry::trace::{Span as _, SpanContext, Tracer};
+use opentelemetry::{Context as OtelContext, KeyValue};
+#[cfg(not(target_arch = "wasm32"))]
+use opentelemetry::global;
+#[cfg(not(target_arch = "wasm32"))]
 use opentelemetry::metrics::MeterProvider as _;
-use opentelemetry::{global, Context as OtelContext, KeyValue};
+#[cfg(not(target_arch = "wasm32"))]
 use opentelemetry_sdk::trace::SdkTracerProvider;
+#[cfg(not(target_arch = "wasm32"))]
 use opentelemetry_sdk::metrics::{PeriodicReader, SdkMeterProvider};
+#[cfg(not(target_arch = "wasm32"))]
 use opentelemetry_otlp::{MetricExporter, WithExportConfig};
-use std::time::Instant;
+use web_time::Instant;
+
+// This module compiles on every target, but only the OpenTelemetry API
+// surface (boxed tracer/span types, KeyValue) is universal. The SDK/OTLP
+// wiring lives solely in `init_instrumentation`, which is native-only: on
+// wasm it never exists, the `GameTracer`/`GameMeter` resources are never
+// inserted, and every consumer already takes `Option<Res<...>>`, so all the
+// span helpers below are simply never reached in a browser.
 
 /// Bevy resource holding the OpenTelemetry tracer
-#[derive(Resource, Clone)]
+#[derive(Resource)]
 pub struct GameTracer {
-    tracer: opentelemetry_sdk::trace::Tracer,
+    tracer: BoxedTracer,
 }
 
 impl GameTracer {
-    pub fn tracer(&self) -> &opentelemetry_sdk::trace::Tracer {
+    pub fn tracer(&self) -> &BoxedTracer {
         &self.tracer
     }
 }
@@ -31,13 +45,16 @@ pub struct GameMeter {
 /// This represents the entire play session from game start to exit
 #[derive(Component)]
 pub struct PlayerSessionTrace {
-    pub span: opentelemetry_sdk::trace::Span,
+    pub span: BoxedSpan,
     pub session_start: Instant,
 }
 
 impl PlayerSessionTrace {
     pub fn new(tracer: &GameTracer) -> Self {
         let mut span = tracer.tracer().start("game_session");
+        // chrono is a native-only dependency; this attribute is skipped on
+        // wasm (where this code is unreachable anyway - no GameTracer).
+        #[cfg(not(target_arch = "wasm32"))]
         span.set_attribute(KeyValue::new("session.start_time", chrono::Utc::now().to_rfc3339()));
         span.set_attribute(KeyValue::new("game.version", env!("CARGO_PKG_VERSION")));
 
@@ -60,7 +77,7 @@ impl PlayerSessionTrace {
 /// Resource for tracking active dialogue session
 #[derive(Resource)]
 pub struct ActiveDialogue {
-    pub span: opentelemetry_sdk::trace::Span,
+    pub span: BoxedSpan,
     pub start_time: Instant,
     pub speaker: String,
     pub chars_read: usize,
@@ -70,8 +87,9 @@ pub struct ActiveDialogue {
 /// Call this alongside init_telemetry() in main
 /// endpoint should match the one used for logging (e.g., "http://127.0.0.1:4317")
 /// metric_interval_ms is the export interval in milliseconds (default: 10000ms)
+#[cfg(not(target_arch = "wasm32"))]
 pub fn init_instrumentation(
-    runtime: &tokio::runtime::Runtime, 
+    runtime: &tokio::runtime::Runtime,
     endpoint: &str,
     metric_interval_ms: Option<u64>
 ) -> anyhow::Result<(GameTracer, GameMeter, SdkTracerProvider, SdkMeterProvider)> {
@@ -95,11 +113,10 @@ pub fn init_instrumentation(
         Ok::<_, anyhow::Error>(provider)
     })?;
 
-    // Set global tracer provider
+    // Set global tracer provider, then hand out the boxed global tracer so
+    // GameTracer's type stays SDK-free (compiles on wasm).
     global::set_tracer_provider(tracer_provider.clone());
-
-    // Get tracer from provider
-    let tracer = tracer_provider.tracer("sregame");
+    let tracer = global::tracer("sregame");
 
     // Create meter provider with OTLP exporter
     let meter_provider = runtime.block_on(async {
@@ -167,7 +184,7 @@ pub fn start_npc_interaction_span(
     npc_name: &str,
     player_pos: Vec2,
     distance: f32,
-) -> opentelemetry_sdk::trace::Span {
+) -> BoxedSpan {
     let context = session.as_context();
     let mut span = tracer.tracer()
         .start_with_context("npc.interaction", &context);
@@ -183,7 +200,7 @@ pub fn start_npc_interaction_span(
 
 /// Helper to record a dialogue line event
 pub fn record_dialogue_line_event(
-    span: &mut opentelemetry_sdk::trace::Span,
+    span: &mut BoxedSpan,
     line_text: &str,
     index: usize,
 ) {

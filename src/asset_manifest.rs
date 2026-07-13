@@ -21,7 +21,10 @@ pub fn map_json(name: &str) -> Option<&'static str> {
     MAPS.iter().find(|(n, _)| *n == name).map(|(_, json)| *json)
 }
 
-/// Names (file stems) of every shipped map.
+/// Names (file stems) of every shipped map. Currently only the test suites
+/// enumerate maps (runtime lookups go through `map_json`); drop the cfg if a
+/// runtime consumer appears.
+#[cfg(test)]
 pub fn map_names() -> impl Iterator<Item = &'static str> {
     MAPS.iter().map(|(name, _)| *name)
 }
