@@ -196,7 +196,9 @@ fn spawn_dialogue_ui(
                 Text::new(first.speaker.clone()),
                 TextFont {
                     font: font.clone().into(),
-                    font_size: FontSize::Px(52.0),
+                    // 52px at 1080p, scaling with the window (Amy sized these on a
+                        // 1080 display; small embeds like the blog iframe shrink to fit).
+                        font_size: FontSize::Vh(52.0 / 10.8),
                     ..default()
                 },
                 TextColor(Color::srgb(1.0, 0.85, 0.3)),
@@ -207,7 +209,8 @@ fn spawn_dialogue_ui(
                 Text::new(""),
                 TextFont {
                     font: font.clone().into(),
-                    font_size: FontSize::Px(46.0),
+                    // 46px at 1080p, scaling with the window.
+                        font_size: FontSize::Vh(46.0 / 10.8),
                     ..default()
                 },
                 TextColor(Color::WHITE),

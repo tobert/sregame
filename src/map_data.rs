@@ -49,6 +49,14 @@ pub struct MapData {
     /// field. See handle_interaction_input in npc.rs.
     #[serde(default)]
     pub counters: Vec<(u32, u32)>,
+    /// Sparse [x, y] list of tiles that pulse a soft "interact here"
+    /// highlight (the retro table's parchment map, the End fairies, ...).
+    /// Purely visual, decoupled from exit trigger tiles so the marker can
+    /// sit on the eye-catching graphic while the trigger stays on the
+    /// walkable tile(s). Baked by tools/convert_maps.py's synthesis passes;
+    /// defaults to empty for map JSON predating this field.
+    #[serde(default)]
+    pub indicators: Vec<(u32, u32)>,
     pub npcs: Vec<NpcData>,
     #[serde(default)]
     pub exits: Vec<ExitData>,
@@ -131,6 +139,13 @@ pub struct ExitData {
     /// motivating case.
     #[serde(default)]
     pub dialogue: Vec<DialogueSegmentData>,
+    /// When true, force-closing this exit's dialogue with Escape CANCELS
+    /// the transfer instead of firing it (a consent prompt: the End
+    /// fairies). When false - the default, and the retro retrospective's
+    /// behavior - Escape skips the scene but still transfers, so skipping
+    /// the climax can't strand the player.
+    #[serde(default)]
+    pub cancel_on_escape: bool,
 }
 
 /// One message box of a scripted scene: RPGMaker code-101 parameters plus
@@ -479,24 +494,31 @@ mod tests {
         // tools/convert_maps.py).
         let map = MapData::load("end").expect("end map should load");
 
-        let mut return_tiles: Vec<(u32, u32)> = map
+        let fairy_exits: Vec<_> = map
             .exits
             .iter()
-            .filter(|e| {
-                e.target_scene == "TownOfEndgame" && e.trigger == ExitTrigger::Touch
-            })
-            .map(|e| (e.trigger_x, e.trigger_y))
+            .filter(|e| e.target_scene == "TownOfEndgame")
             .collect();
+        let mut return_tiles: Vec<(u32, u32)> =
+            fairy_exits.iter().map(|e| (e.trigger_x, e.trigger_y)).collect();
         return_tiles.sort();
         assert_eq!(
             return_tiles,
             vec![(7, 5), (9, 5)],
-            "End must have touch exits back to town flanking the player spawn (8,5)"
+            "End must have exits back to town flanking the player spawn (8,5)"
         );
 
+        // The fairies ASK before warping: action trigger (no insta-warp on
+        // touch), a consent line, and Escape cancels instead of firing.
+        for exit in &fairy_exits {
+            assert_eq!(exit.trigger, ExitTrigger::Action, "fairy exits fire on E, not touch");
+            assert!(!exit.dialogue.is_empty(), "fairy exits need a consent line");
+            assert!(exit.cancel_on_escape, "Escape must let the player stay at the End");
+        }
+
         // The player must be able to walk from the spawn onto both exit
-        // tiles, and each exit tile carries a visible sprite so the way out
-        // reads as intentional.
+        // tiles; each carries a visible sprite plus a pulsing indicator so
+        // the way out reads as intentional.
         for (x, y) in [(7, 5), (8, 5), (9, 5)] {
             let nibble = map.passability[(y * map.width + x) as usize];
             assert_eq!(nibble, 15, "End pocket tile ({x},{y}) must be fully passable");
@@ -506,7 +528,64 @@ mod tests {
                 map.props.iter().any(|p| p.x == x && p.y == y),
                 "End exit tile ({x},{y}) needs a visible sprite marking the way out"
             );
+            assert!(
+                map.indicators.contains(&(x, y)),
+                "End exit tile ({x},{y}) needs a pulsing indicator"
+            );
         }
+    }
+
+    #[test]
+    fn retro_table_scene_is_discoverable_and_forgiving() {
+        // Amy's playtest note: the retrospective fired only on (12,12) -
+        // one unmarked tile below the parchment map graphic at (12,11) -
+        // and was nearly impossible to find. The converter now (a) widens
+        // the action trigger across the open table gap (11..13, 12) between
+        // Managear Greg (10,12) and Isabella (14,12), all with the same
+        // scripted scene, and (b) drops a pulsing indicator on the parchment
+        // itself. The stairs EXIT at (2,9) gets an indicator too.
+        let map = MapData::load("team_marathon_retro").expect("retro map should load");
+
+        let mut scene_tiles: Vec<(u32, u32)> = map
+            .exits
+            .iter()
+            .filter(|e| {
+                e.target_scene == "End"
+                    && e.trigger == ExitTrigger::Action
+                    && !e.dialogue.is_empty()
+            })
+            .map(|e| (e.trigger_x, e.trigger_y))
+            .collect();
+        scene_tiles.sort();
+        assert_eq!(
+            scene_tiles,
+            vec![(11, 12), (12, 12), (13, 12)],
+            "the retrospective must fire from anywhere in the open table gap"
+        );
+
+        // All three copies carry the identical scene.
+        let scenes: Vec<_> = map
+            .exits
+            .iter()
+            .filter(|e| e.target_scene == "End" && !e.dialogue.is_empty())
+            .map(|e| e.dialogue.len())
+            .collect();
+        assert!(scenes.windows(2).all(|w| w[0] == w[1]), "widened triggers must share the scene");
+
+        // The retrospective must NOT be cancelable: skipping the scene with
+        // Escape still transfers (nobody gets stranded mid-climax).
+        for exit in map.exits.iter().filter(|e| e.target_scene == "End" && !e.dialogue.is_empty()) {
+            assert!(!exit.cancel_on_escape);
+        }
+
+        assert!(
+            map.indicators.contains(&(12, 11)),
+            "the parchment map graphic (12,11) needs the pulsing indicator"
+        );
+        assert!(
+            map.indicators.contains(&(2, 9)),
+            "the stairs EXIT (2,9) needs the pulsing indicator"
+        );
     }
 
     #[test]

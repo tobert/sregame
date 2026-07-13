@@ -29,12 +29,34 @@ impl Plugin for TilemapPlugin {
             .add_systems(OnExit(Scene::TeamInferno), despawn_map)
             .add_systems(OnExit(Scene::MahoganyRow), despawn_map)
             .add_systems(OnExit(Scene::Intro), despawn_map)
-            .add_systems(OnExit(Scene::End), despawn_map);
+            .add_systems(OnExit(Scene::End), despawn_map)
+            .add_systems(Update, pulse_interact_indicators);
     }
 }
 
 #[derive(Component)]
 pub struct Map;
+
+/// Pulsing "interact here" tile highlight (see `MapData::indicators`).
+#[derive(Component)]
+pub struct InteractIndicator;
+
+/// Alpha of the interact glow at time `t` seconds: a slow breath between
+/// 0.10 and 0.45 with a ~1.6s period - visible at a glance, calm enough not
+/// to upstage the pixel art.
+fn indicator_alpha(t: f32) -> f32 {
+    0.275 + 0.175 * (t * std::f32::consts::TAU / 1.6).sin()
+}
+
+fn pulse_interact_indicators(
+    time: Res<Time>,
+    mut indicators: Query<&mut Sprite, With<InteractIndicator>>,
+) {
+    let alpha = indicator_alpha(time.elapsed_secs());
+    for mut sprite in &mut indicators {
+        sprite.color.set_alpha(alpha);
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum TileCollision {
@@ -517,6 +539,27 @@ fn spawn_map(
         info!("Spawned prop: {} at tile ({}, {})", prop.name, prop.x, prop.y);
     }
 
+    // Pulsing "interact here" highlights (see MapData::indicators): soft
+    // warm overlays whose alpha breathes. Decoupled from exit triggers so
+    // the glow can sit on the eye-catching graphic (the retro table's
+    // parchment) while the trigger stays on the walkable tiles.
+    for &(x, y) in &map.indicators {
+        let world_pos = tile_to_world(x, y, map.width, map.height);
+        commands.spawn((
+            Sprite {
+                color: Color::srgba(1.0, 0.93, 0.5, 0.35),
+                custom_size: Some(Vec2::new(TILE_SIZE.x - 6.0, TILE_SIZE.y - 6.0)),
+                ..default()
+            },
+            // Above doors (0.9), below props (0.95) and the character band
+            // (1.0±) - the glow hugs the ground under sprites and bodies.
+            Transform::from_xyz(world_pos.x, world_pos.y, 0.93),
+            InteractIndicator,
+            Map,
+        ));
+        info!("Spawned interact indicator at tile ({x}, {y})");
+    }
+
     // If we arrived via a portal (see transitions.rs), place the player at
     // the target spawn tile. If absent, this is either the very first scene
     // load or a scene the player didn't reach via a portal - leave the
@@ -550,6 +593,23 @@ fn despawn_map(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The interact glow must stay visible-but-subtle across its whole
+    /// cycle: never invisible (min > 0), never poster-bright (max < 0.5),
+    /// and actually pulsing (meaningful swing between extremes).
+    #[test]
+    fn indicator_pulse_stays_in_the_subtle_band() {
+        let mut min = f32::MAX;
+        let mut max = f32::MIN;
+        for i in 0..320 {
+            let a = indicator_alpha(i as f32 * 0.0125); // 4s @ 80Hz
+            min = min.min(a);
+            max = max.max(a);
+        }
+        assert!(min > 0.05 && min < 0.15, "min alpha {min} out of band");
+        assert!(max > 0.40 && max < 0.50, "max alpha {max} out of band");
+        assert!(max - min > 0.3, "pulse swing {} too subtle to notice", max - min);
+    }
 
     #[test]
     fn can_step_respects_one_way_edges() {

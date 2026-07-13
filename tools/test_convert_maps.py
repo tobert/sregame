@@ -104,6 +104,7 @@ def fresh_end_clean_data() -> dict:
         "passability": [0] * (17 * 13),
         "exits": [],
         "props": [],
+        "indicators": [],
     }
 
 
@@ -116,7 +117,10 @@ def test_end_gets_return_portals() -> None:
         check(f"exit at ({x},{y}) trigger_x", exit_data["trigger_x"], x)
         check(f"exit at ({x},{y}) trigger_y", exit_data["trigger_y"], y)
         check(f"exit at ({x},{y}) target", exit_data["target_scene"], "TownOfEndgame")
-        check(f"exit at ({x},{y}) trigger type", exit_data["trigger"], "touch")
+        check(f"exit at ({x},{y}) trigger type", exit_data["trigger"], "action")
+        check(f"exit at ({x},{y}) has consent line", len(exit_data["dialogue"]), 1)
+        check(f"exit at ({x},{y}) cancelable", exit_data["cancel_on_escape"], True)
+    check("fairy indicators", data["indicators"], [list(t) for t in cm.END_PORTAL_TILES])
 
     check("prop count", len(data["props"]), 2)
     for prop, (x, y) in zip(data["props"], cm.END_PORTAL_TILES):
@@ -136,6 +140,49 @@ def test_return_portals_only_apply_to_end() -> None:
     check("no exits added", data["exits"], [])
     check("no props added", data["props"], [])
     check("passability untouched", any(data["passability"]), False)
+
+
+def fresh_retro_clean_data() -> dict:
+    # The authored retro-dialog action exit as extract_exits_from_events
+    # emits it (dialogue truncated - the pass must not care).
+    return {
+        "exits": [
+            {"trigger_x": 12, "trigger_y": 16, "target_scene": "TownOfEndgame",
+             "target_spawn_x": 8, "target_spawn_y": 30, "trigger": "touch", "dialogue": []},
+            {"trigger_x": 2, "trigger_y": 9, "target_scene": "End",
+             "target_spawn_x": 8, "target_spawn_y": 5, "trigger": "action", "dialogue": []},
+            {"trigger_x": 12, "trigger_y": 12, "target_scene": "End",
+             "target_spawn_x": 8, "target_spawn_y": 5, "trigger": "action",
+             "dialogue": [{"speaker": "Nyaanager Evie", "portrait": "Nature",
+                           "face_index": 4, "text": "Thanks for helping us"}]},
+        ],
+        "indicators": [],
+    }
+
+
+def test_retro_table_trigger_widens_across_the_gap() -> None:
+    data = fresh_retro_clean_data()
+    check("applied to retro", cm.add_retro_table_affordance(data, "team_marathon_retro.json"), True)
+
+    scene_exits = [e for e in data["exits"]
+                   if e["target_scene"] == "End" and e["dialogue"]]
+    tiles = sorted((e["trigger_x"], e["trigger_y"]) for e in scene_exits)
+    check("scene fires across the gap", tiles, [(11, 12), (12, 12), (13, 12)])
+    for e in scene_exits:
+        check("same scene on every tile", e["dialogue"], scene_exits[0]["dialogue"])
+        check("gap exits are action", e["trigger"], "action")
+
+    # The stairs EXIT and the town door must be untouched.
+    check("stairs exit intact",
+          [e for e in data["exits"] if (e["trigger_x"], e["trigger_y"]) == (2, 9)][0]["dialogue"], [])
+    check("indicators", data["indicators"], [list(t) for t in cm.RETRO_INDICATORS])
+
+
+def test_retro_affordance_only_applies_to_retro() -> None:
+    data = fresh_retro_clean_data()
+    check("not applied elsewhere", cm.add_retro_table_affordance(data, "team_marathon.json"), False)
+    check("exit count unchanged", len(data["exits"]), 3)
+    check("no indicators", data["indicators"], [])
 
 
 def main() -> int:

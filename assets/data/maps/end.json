@@ -1576,8 +1576,16 @@
       "target_scene": "TownOfEndgame",
       "target_spawn_x": 16,
       "target_spawn_y": 16,
-      "trigger": "touch",
-      "dialogue": []
+      "trigger": "action",
+      "dialogue": [
+        {
+          "speaker": "Fairy",
+          "portrait": "Nature",
+          "face_index": 5,
+          "text": "Ready to fly back to the town square? Press Space and we'll go - or Escape to stay a little longer."
+        }
+      ],
+      "cancel_on_escape": true
     },
     {
       "trigger_x": 9,
@@ -1585,8 +1593,16 @@
       "target_scene": "TownOfEndgame",
       "target_spawn_x": 16,
       "target_spawn_y": 16,
-      "trigger": "touch",
-      "dialogue": []
+      "trigger": "action",
+      "dialogue": [
+        {
+          "speaker": "Fairy",
+          "portrait": "Nature",
+          "face_index": 5,
+          "text": "Ready to fly back to the town square? Press Space and we'll go - or Escape to stay a little longer."
+        }
+      ],
+      "cancel_on_escape": true
     }
   ],
   "doors": [],
@@ -1617,5 +1633,15 @@
       "frame_width": 48,
       "frame_height": 48
     }
+  ],
+  "indicators": [
+    [
+      7,
+      5
+    ],
+    [
+      9,
+      5
+    ]
   ]
 }

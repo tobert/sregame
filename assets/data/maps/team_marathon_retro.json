@@ -2609,8 +2609,218 @@
           "text": "Yep. Exactly. Adaptive capacity in action is resilience."
         }
       ]
+    },
+    {
+      "trigger_x": 11,
+      "trigger_y": 12,
+      "target_scene": "End",
+      "target_spawn_x": 8,
+      "target_spawn_y": 5,
+      "trigger": "action",
+      "dialogue": [
+        {
+          "speaker": "Nyaanager Evie",
+          "portrait": "Nature",
+          "face_index": 4,
+          "text": "Thanks for helping us with this incident Amy. It seems simple technically, but I know in my toebeans there's more to the story."
+        },
+        {
+          "speaker": "Amy",
+          "portrait": "Amy",
+          "face_index": 0,
+          "text": "I'll summarize the incident to make sure we're all on the same page."
+        },
+        {
+          "speaker": "Amy",
+          "portrait": "Amy",
+          "face_index": 0,
+          "text": "Now, let's talk about contributing factors!"
+        },
+        {
+          "speaker": "Isabella",
+          "portrait": "Isabella",
+          "face_index": 0,
+          "text": "I feel terrible about letting the deploy hang around half-failed. It's worked flawlessly for so long I think I just assumed production was fine."
+        },
+        {
+          "speaker": "Doctor McFire",
+          "portrait": "DrMcfire",
+          "face_index": 0,
+          "text": "It happens to all of us Isabella. From what we've heard, it sounds like your team is saturated. Accidents are inevitable!"
+        },
+        {
+          "speaker": "Doctor McFire",
+          "portrait": "DrMcfire",
+          "face_index": 0,
+          "text": "Can we monitor for broken schemas?"
+        },
+        {
+          "speaker": "Devo Pestorius",
+          "portrait": "People1",
+          "face_index": 5,
+          "text": "I added failed migration detection to the pipeline before the incident was over. This won't happen again."
+        },
+        {
+          "speaker": "Managear Greg",
+          "portrait": "Greg",
+          "face_index": 0,
+          "text": "I realize we've been pushing the team pretty hard. I'm going to push back harder on Mahogany Row when they push for more than we can do."
+        },
+        {
+          "speaker": "The Boss",
+          "portrait": "Monster",
+          "face_index": 3,
+          "text": "You're coddling them. It's your team so whatever. Are we going to talk about how your change broke our product!?"
+        },
+        {
+          "speaker": "Hidaslo Xela",
+          "portrait": "People3",
+          "face_index": 6,
+          "text": "Tooting my own horn here, but without those error budget alerts we would have been down longer."
+        },
+        {
+          "speaker": "Courage",
+          "portrait": "Monster",
+          "face_index": 2,
+          "text": "I haven't done live DDL updates like that in years. It was invvvvvigorating!"
+        },
+        {
+          "speaker": "Paws Alljohn",
+          "portrait": "Evil",
+          "face_index": 3,
+          "text": "Team Disco was surprised by something they've never seen before, an unknown unknown."
+        },
+        {
+          "speaker": "Paws Alljohn",
+          "portrait": "Evil",
+          "face_index": 3,
+          "text": "When these folks used their expertise to diagnose and manually revert, that was adaptive capacity in action."
+        },
+        {
+          "speaker": "Shelly the Intern",
+          "portrait": "Actor3",
+          "face_index": 3,
+          "text": "Wait a minute Paws. Is that the resilience stuff you're always talking about?"
+        },
+        {
+          "speaker": "Paws Alljohn",
+          "portrait": "Evil",
+          "face_index": 3,
+          "text": "Yep. Exactly. Adaptive capacity in action is resilience."
+        }
+      ]
+    },
+    {
+      "trigger_x": 13,
+      "trigger_y": 12,
+      "target_scene": "End",
+      "target_spawn_x": 8,
+      "target_spawn_y": 5,
+      "trigger": "action",
+      "dialogue": [
+        {
+          "speaker": "Nyaanager Evie",
+          "portrait": "Nature",
+          "face_index": 4,
+          "text": "Thanks for helping us with this incident Amy. It seems simple technically, but I know in my toebeans there's more to the story."
+        },
+        {
+          "speaker": "Amy",
+          "portrait": "Amy",
+          "face_index": 0,
+          "text": "I'll summarize the incident to make sure we're all on the same page."
+        },
+        {
+          "speaker": "Amy",
+          "portrait": "Amy",
+          "face_index": 0,
+          "text": "Now, let's talk about contributing factors!"
+        },
+        {
+          "speaker": "Isabella",
+          "portrait": "Isabella",
+          "face_index": 0,
+          "text": "I feel terrible about letting the deploy hang around half-failed. It's worked flawlessly for so long I think I just assumed production was fine."
+        },
+        {
+          "speaker": "Doctor McFire",
+          "portrait": "DrMcfire",
+          "face_index": 0,
+          "text": "It happens to all of us Isabella. From what we've heard, it sounds like your team is saturated. Accidents are inevitable!"
+        },
+        {
+          "speaker": "Doctor McFire",
+          "portrait": "DrMcfire",
+          "face_index": 0,
+          "text": "Can we monitor for broken schemas?"
+        },
+        {
+          "speaker": "Devo Pestorius",
+          "portrait": "People1",
+          "face_index": 5,
+          "text": "I added failed migration detection to the pipeline before the incident was over. This won't happen again."
+        },
+        {
+          "speaker": "Managear Greg",
+          "portrait": "Greg",
+          "face_index": 0,
+          "text": "I realize we've been pushing the team pretty hard. I'm going to push back harder on Mahogany Row when they push for more than we can do."
+        },
+        {
+          "speaker": "The Boss",
+          "portrait": "Monster",
+          "face_index": 3,
+          "text": "You're coddling them. It's your team so whatever. Are we going to talk about how your change broke our product!?"
+        },
+        {
+          "speaker": "Hidaslo Xela",
+          "portrait": "People3",
+          "face_index": 6,
+          "text": "Tooting my own horn here, but without those error budget alerts we would have been down longer."
+        },
+        {
+          "speaker": "Courage",
+          "portrait": "Monster",
+          "face_index": 2,
+          "text": "I haven't done live DDL updates like that in years. It was invvvvvigorating!"
+        },
+        {
+          "speaker": "Paws Alljohn",
+          "portrait": "Evil",
+          "face_index": 3,
+          "text": "Team Disco was surprised by something they've never seen before, an unknown unknown."
+        },
+        {
+          "speaker": "Paws Alljohn",
+          "portrait": "Evil",
+          "face_index": 3,
+          "text": "When these folks used their expertise to diagnose and manually revert, that was adaptive capacity in action."
+        },
+        {
+          "speaker": "Shelly the Intern",
+          "portrait": "Actor3",
+          "face_index": 3,
+          "text": "Wait a minute Paws. Is that the resilience stuff you're always talking about?"
+        },
+        {
+          "speaker": "Paws Alljohn",
+          "portrait": "Evil",
+          "face_index": 3,
+          "text": "Yep. Exactly. Adaptive capacity in action is resilience."
+        }
+      ]
     }
   ],
   "doors": [],
-  "props": []
+  "props": [],
+  "indicators": [
+    [
+      12,
+      11
+    ],
+    [
+      2,
+      9
+    ]
+  ]
 }

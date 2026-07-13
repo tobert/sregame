@@ -36,9 +36,14 @@ impl Plugin for TransitionsPlugin {
 /// semantics.
 #[derive(Resource)]
 pub struct PendingTransferAfterDialogue {
-    target_scene: Scene,
-    spawn_x: u32,
-    spawn_y: u32,
+    pub(crate) target_scene: Scene,
+    pub(crate) spawn_x: u32,
+    pub(crate) spawn_y: u32,
+    /// True for consent prompts (the End fairies): Escape drops this
+    /// resource (see game_state::handle_escape_key) so the transfer never
+    /// fires. False for scripted scenes like the retrospective, where
+    /// Escape skips the scene but the transfer still happens.
+    pub cancel_on_escape: bool,
 }
 
 fn fire_transfer_after_dialogue(
@@ -241,6 +246,7 @@ fn check_map_exits(
                 target_scene,
                 spawn_x: exit.target_spawn_x,
                 spawn_y: exit.target_spawn_y,
+                cancel_on_escape: exit.cancel_on_escape,
             });
         } else if let Some((door_entity, _)) = door_here {
             commands.insert_resource(DepartingDoor {
@@ -275,10 +281,10 @@ mod tests {
     // tile or target without the test being updated to match.
     fn town_of_endgame_exits() -> Vec<ExitData> {
         vec![
-            ExitData { trigger_x: 8, trigger_y: 29, target_scene: "TeamMarathonRetro".into(), target_spawn_x: 12, target_spawn_y: 15, trigger: ExitTrigger::Touch, dialogue: vec![] },
-            ExitData { trigger_x: 23, trigger_y: 20, target_scene: "TeamDisco".into(), target_spawn_x: 7, target_spawn_y: 13, trigger: ExitTrigger::Touch, dialogue: vec![] },
-            ExitData { trigger_x: 6, trigger_y: 18, target_scene: "TeamInferno".into(), target_spawn_x: 11, target_spawn_y: 18, trigger: ExitTrigger::Touch, dialogue: vec![] },
-            ExitData { trigger_x: 29, trigger_y: 13, target_scene: "MahoganyRow".into(), target_spawn_x: 16, target_spawn_y: 10, trigger: ExitTrigger::Touch, dialogue: vec![] },
+            ExitData { trigger_x: 8, trigger_y: 29, target_scene: "TeamMarathonRetro".into(), target_spawn_x: 12, target_spawn_y: 15, trigger: ExitTrigger::Touch, dialogue: vec![], cancel_on_escape: false },
+            ExitData { trigger_x: 23, trigger_y: 20, target_scene: "TeamDisco".into(), target_spawn_x: 7, target_spawn_y: 13, trigger: ExitTrigger::Touch, dialogue: vec![], cancel_on_escape: false },
+            ExitData { trigger_x: 6, trigger_y: 18, target_scene: "TeamInferno".into(), target_spawn_x: 11, target_spawn_y: 18, trigger: ExitTrigger::Touch, dialogue: vec![], cancel_on_escape: false },
+            ExitData { trigger_x: 29, trigger_y: 13, target_scene: "MahoganyRow".into(), target_spawn_x: 16, target_spawn_y: 10, trigger: ExitTrigger::Touch, dialogue: vec![], cancel_on_escape: false },
         ]
     }
 
@@ -337,7 +343,7 @@ mod tests {
     // mine where walking near the table teleported the player to End.
     fn retro_action_exit() -> Vec<ExitData> {
         vec![
-            ExitData { trigger_x: 12, trigger_y: 12, target_scene: "End".into(), target_spawn_x: 8, target_spawn_y: 5, trigger: ExitTrigger::Action, dialogue: vec![] },
+            ExitData { trigger_x: 12, trigger_y: 12, target_scene: "End".into(), target_spawn_x: 8, target_spawn_y: 5, trigger: ExitTrigger::Action, dialogue: vec![], cancel_on_escape: false },
         ]
     }
 
@@ -495,7 +501,7 @@ mod tests {
     // door out of the game's opening scene, back to Town of Endgame.
     fn intro_exits() -> Vec<ExitData> {
         vec![
-            ExitData { trigger_x: 8, trigger_y: 1, target_scene: "TownOfEndgame".into(), target_spawn_x: 16, target_spawn_y: 23, trigger: ExitTrigger::Touch, dialogue: vec![] },
+            ExitData { trigger_x: 8, trigger_y: 1, target_scene: "TownOfEndgame".into(), target_spawn_x: 16, target_spawn_y: 23, trigger: ExitTrigger::Touch, dialogue: vec![], cancel_on_escape: false },
         ]
     }
 
@@ -589,6 +595,7 @@ mod tests {
                 target_spawn_y: expected_spawn.1,
                 trigger: ExitTrigger::Touch,
                 dialogue: vec![],
+                cancel_on_escape: false,
             }];
             let mut world = setup_world(trigger_tile, exits, width, height);
             world.run_system_once(check_map_exits).unwrap();

@@ -688,9 +688,20 @@ def add_end_return_portals(clean_data, output_name):
             "target_scene": "TownOfEndgame",
             "target_spawn_x": spawn_x,
             "target_spawn_y": spawn_y,
-            "trigger": "touch",
-            "dialogue": [],
+            # Action + consent + cancelable: walking onto the fairy does
+            # nothing, E asks, Space-through accepts, Escape stays. An
+            # insta-warp on touch yanked players out of the credits tableau.
+            "trigger": "action",
+            "dialogue": [{
+                "speaker": "Fairy",
+                "portrait": "Nature",
+                "face_index": 5,
+                "text": "Ready to fly back to the town square? "
+                        "Press Space and we'll go - or Escape to stay a little longer.",
+            }],
+            "cancel_on_escape": True,
         })
+        clean_data['indicators'].append([x, y])
         clean_data['props'].append({
             "name": "Return Fairy",
             "x": x,
@@ -704,6 +715,38 @@ def add_end_return_portals(clean_data, output_name):
             "frame_width": 48,
             "frame_height": 48,
         })
+    return True
+
+
+# Retro room affordances: the parchment map graphic sits on the table at
+# (12,11); the open gap players can stand in runs (11..13, 12) between
+# Managear Greg (10,12) and Isabella (14,12). The stairs EXIT event is (2,9).
+RETRO_TABLE_GAP = ((11, 12), (13, 12))  # extra trigger tiles; (12,12) is authored
+RETRO_INDICATORS = ((12, 11), (2, 9))
+
+
+def add_retro_table_affordance(clean_data, output_name):
+    """Make the retrospective discoverable (Amy's playtest note: it fired
+    only on one unmarked tile below the parchment graphic). Widens the
+    authored (12,12) action exit across the whole open table gap - same
+    scene on every tile - and drops pulsing indicators on the parchment
+    graphic and the stairs EXIT. Mutates clean_data in place; returns True
+    if applied."""
+    if output_name != "team_marathon_retro.json":
+        return False
+
+    table_exit = next(
+        e for e in clean_data['exits']
+        if (e['trigger_x'], e['trigger_y']) == (12, 12) and e['trigger'] == 'action'
+    )
+    for (x, y) in RETRO_TABLE_GAP:
+        widened = dict(table_exit)
+        widened['trigger_x'] = x
+        widened['trigger_y'] = y
+        clean_data['exits'].append(widened)
+
+    for (x, y) in RETRO_INDICATORS:
+        clean_data['indicators'].append([x, y])
     return True
 
 
@@ -884,10 +927,13 @@ def convert_map(rpgmaker_map_path, output_path, tileset_entry, compositor):
         "exits": exits,
         "doors": doors,
         "props": props,
+        "indicators": [],
     }
 
     if add_end_return_portals(clean_data, output_path.name):
         print(f"  Added return portals to {output_path.name}")
+    if add_retro_table_affordance(clean_data, output_path.name):
+        print(f"  Added table/stairs affordances to {output_path.name}")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, 'w', encoding='utf-8') as f:
