@@ -286,3 +286,59 @@ fn exit_after_n_frames_or_seconds(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::state::app::StatesPlugin;
+
+    #[derive(Resource, Default)]
+    struct TownEnterCount(u32);
+
+    /// Entering `GameState::Playing` must spawn the town exactly once.
+    ///
+    /// `on_enter_playing` sets `Scene::TownOfEndgame` even though the `Scene`
+    /// sub-state is created with that same `#[default]` value the moment
+    /// `Playing` is entered. Under Bevy <= 0.17 an identity `set()` is
+    /// swallowed; Bevy 0.18 changes state semantics so that setting the
+    /// current value re-fires `OnExit`/`OnEnter`. If that redundant set
+    /// survives the 0.18 hop, `OnEnter(Scene::TownOfEndgame)` fires twice -
+    /// in the real game that is a full despawn + respawn of the town map one
+    /// frame after it first spawned. This test drives the real state machine
+    /// with `on_enter_playing` wired up and counts town entries.
+    #[test]
+    fn entering_playing_enters_town_exactly_once() {
+        let mut app = App::new();
+        app.add_plugins(StatesPlugin)
+            .init_state::<GameState>()
+            .add_sub_state::<Scene>()
+            .add_sub_state::<Mode>()
+            .init_resource::<TownEnterCount>()
+            .add_systems(OnEnter(GameState::Playing), on_enter_playing)
+            .add_systems(
+                OnEnter(Scene::TownOfEndgame),
+                |mut count: ResMut<TownEnterCount>| count.0 += 1,
+            );
+
+        // Loading -> Playing, mirroring assets::check_asset_loading.
+        app.world_mut()
+            .resource_mut::<NextState<GameState>>()
+            .set(GameState::Playing);
+        app.update();
+        assert_eq!(*app.world().resource::<State<GameState>>().get(), GameState::Playing);
+        assert_eq!(*app.world().resource::<State<Scene>>().get(), Scene::TownOfEndgame);
+
+        // Give any redundant NextState::set queued by on_enter_playing time
+        // to apply (state transitions resolve on the following update).
+        app.update();
+        app.update();
+        app.update();
+
+        assert_eq!(
+            app.world().resource::<TownEnterCount>().0,
+            1,
+            "OnEnter(Scene::TownOfEndgame) fired more than once entering Playing; \
+             the town map would despawn and respawn after its first spawn"
+        );
+    }
+}
