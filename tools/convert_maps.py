@@ -20,6 +20,7 @@ from pathlib import Path
 from PIL import Image
 
 from rpgmaker_tiles import (
+    SET_NUMBER_B,
     TILE_SIZE,
     TILE_ID_A1,
     TILE_ID_A4,
@@ -615,6 +616,46 @@ class TileCompositor:
         return atlas
 
 
+# The VisuStella "Outside" B sheet's first two rows are hanging shop signs:
+# tiles 1-14 carry icons/text (1 = sword, 4 = coin purse, 6 = "INN",
+# 12 = ring, ...), tile 15 is the same board BLANK. The town map has the
+# blank board painted on layer 3 directly on top of authored icon signs on
+# layer 2 at four cells (the inn/shop doors + one doorless building), and
+# since the engine draws layer 3 over layer 2 (rmmz_core.js _addSpot,
+# lines 2436-2463 - no plugin in this game overrides it), even the
+# original RPGMaker build showed blank boards there. That contradicts the
+# obvious authoring intent (why place an INN sign above the inn door just
+# to cover it?), so we treat it as an editor-stacking mishap and repair it
+# at conversion time: drop the blank board wherever it buries a real sign.
+# A lone blank board (the Team Burnout door) is authored content and stays.
+OUTSIDE_B_SHEET_NAME = "Outside_B_VS"
+BLANK_SIGN_TILE_ID = 15
+ICON_SIGN_TILE_IDS = range(1, 15)
+
+
+def repair_buried_signs(rpg_data, tileset_entry):
+    """Clear layer-3 blank sign boards that occlude an authored icon sign
+    on layer 2. Mutates rpg_data['data'] in place; returns the number of
+    cells repaired. Only meaningful (and only applied) when this tileset's
+    B sheet is the VisuStella Outside one - the same tile IDs are entirely
+    different art in other B sheets."""
+    if tileset_entry['tilesetNames'][SET_NUMBER_B] != OUTSIDE_B_SHEET_NAME:
+        return 0
+
+    width = rpg_data['width']
+    height = rpg_data['height']
+    data = rpg_data['data']
+    repaired = 0
+    for y in range(height):
+        for x in range(width):
+            index2 = (2 * height + y) * width + x
+            index3 = (3 * height + y) * width + x
+            if data[index3] == BLANK_SIGN_TILE_ID and data[index2] in ICON_SIGN_TILE_IDS:
+                data[index3] = 0
+                repaired += 1
+    return repaired
+
+
 def convert_tiles_and_collision(rpg_data, tileset_entry, compositor):
     """Bake one map's tiles/upper_tiles/collision using the given
     (possibly shared) TileCompositor. Callers that pass the *same*
@@ -761,6 +802,10 @@ def convert_map(rpgmaker_map_path, output_path, tileset_entry, compositor):
 
     with open(rpgmaker_map_path, 'r', encoding='utf-8') as f:
         rpg_data = json.load(f)
+
+    repaired_signs = repair_buried_signs(rpg_data, tileset_entry)
+    if repaired_signs:
+        print(f"  Repaired {repaired_signs} buried sign(s) in {rpgmaker_map_path.name}")
 
     width = rpg_data['width']
     height = rpg_data['height']
