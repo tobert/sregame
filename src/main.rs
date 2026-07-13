@@ -254,9 +254,13 @@ fn setup(mut commands: Commands) {
     info!("SRE Game initialized");
 }
 
-fn on_enter_playing(mut next_scene: ResMut<NextState<Scene>>) {
+/// `Scene` is a sub-state sourced from `GameState::Playing`, so entering
+/// Playing already creates it at its `#[default]` (`TownOfEndgame`). Do not
+/// `set()` it here: since Bevy 0.18, setting a state to its current value
+/// re-fires OnExit/OnEnter, which would despawn and respawn the town map one
+/// frame after it first spawned.
+fn on_enter_playing() {
     info!("Entering Playing state - player can explore");
-    next_scene.set(Scene::TownOfEndgame);
 }
 
 fn on_enter_dialogue() {
