@@ -58,6 +58,35 @@ cargo build --release
 cargo run --release
 ```
 
+### Building for the Web (WebAssembly)
+
+The game runs in the browser via `wasm32-unknown-unknown`, built with the
+[Bevy CLI](https://thebevyflock.github.io/bevy_cli/) (note: install from git —
+the `bevy_cli` name on crates.io is only a reservation):
+
+```bash
+rustup target add wasm32-unknown-unknown
+cargo install --git https://github.com/TheBevyFlock/bevy_cli --locked bevy_cli
+
+# Serve locally at http://127.0.0.1:4000 (dev profile, fast iteration)
+bevy run web
+
+# Deployable static bundle (wasm-opt'd) in target/bevy_web/web-release/sregame/
+bevy build --release web --bundle
+```
+
+Web-relevant design notes:
+
+- **WebGL2 is the compatibility floor** — don't enable Bevy's `webgpu`
+  feature. WebGL2 has no texture arrays, so the wasm target compiles
+  `bevy_ecs_tilemap` with its `atlas` feature (see `Cargo.toml`).
+- Browsers have no filesystem: map JSON and asset discovery are embedded at
+  compile time by `build.rs` (see `src/asset_manifest.rs`). PNGs/fonts load
+  through the `AssetServer` (HTTP fetch on web).
+- Telemetry (OTLP/tokio) and the BRP dev server are native-only; the wasm
+  entry point is `web_main` in `src/main.rs`.
+- `./scripts/check-wasm.sh` is the compile gate — run it like the tests.
+
 ### Cross-Compiling for Windows
 
 From Linux or WSL:
