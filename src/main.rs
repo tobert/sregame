@@ -15,6 +15,7 @@ mod tilemap;
 mod dialogue;
 mod npc;
 mod map_data;
+mod asset_manifest;
 mod viewport;
 mod semantic_state;
 mod telemetry;

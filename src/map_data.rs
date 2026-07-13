@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use serde::Deserialize;
 use anyhow::{Context, Result};
-use std::fs;
 
 #[derive(Debug, Deserialize)]
 pub struct MapData {
@@ -194,11 +193,11 @@ pub struct DialogueData {
 
 impl MapData {
     pub fn load(map_name: &str) -> Result<Self> {
-        let path = format!("assets/data/maps/{}.json", map_name);
-        let json = fs::read_to_string(&path)
-            .context(format!("Failed to read map file: {}", path))?;
+        let json = crate::asset_manifest::map_json(map_name).ok_or_else(|| {
+            anyhow::anyhow!("no map named {map_name:?} in the embedded manifest")
+        })?;
 
-        let map: MapData = serde_json::from_str(&json)
+        let map: MapData = serde_json::from_str(json)
             .context("Failed to parse map JSON")?;
 
         Ok(map)
@@ -393,19 +392,15 @@ mod tests {
         // box - both easy to miss when adding a new map's content by hand.
         // This test catches that at `cargo test` time instead of by
         // noticing an NPC silently didn't spawn during a playtest.
-        let maps_dir = std::path::Path::new("assets/data/maps");
         let characters_dir = std::path::Path::new("assets/textures/characters");
         let portraits_dir = std::path::Path::new("assets/textures/portraits");
 
         let mut missing = Vec::new();
 
-        for entry in fs::read_dir(maps_dir).expect("assets/data/maps should exist") {
-            let path = entry.expect("readable dir entry").path();
-            if path.extension().and_then(|e| e.to_str()) != Some("json") {
-                continue;
-            }
-            let map_name = path.file_stem().unwrap().to_string_lossy().to_string();
-            let map = MapData::load(&map_name).expect("shipped map JSON should parse");
+        // Iterates the embedded manifest; asset_manifest's own tests prove
+        // the manifest matches assets/data/maps on disk.
+        for map_name in crate::asset_manifest::map_names() {
+            let map = MapData::load(map_name).expect("shipped map JSON should parse");
 
             for npc in &map.npcs {
                 if !characters_dir.join(format!("{}.png", npc.sprite)).exists() {

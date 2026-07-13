@@ -1,7 +1,7 @@
 use bevy::prelude::*;
+use crate::asset_manifest;
 use crate::game_state::GameState;
 use std::collections::HashMap;
-use std::fs;
 
 pub struct AssetsPlugin;
 
@@ -21,8 +21,8 @@ impl Plugin for AssetsPlugin {
 pub struct GameAssets {
     pub player_sprite: Handle<Image>,
     /// Character sprite sheets, keyed by filename stem (e.g. "Nature" for
-    /// `textures/characters/Nature.png`). Populated by scanning the directory
-    /// on disk so new characters need no Rust changes.
+    /// `textures/characters/Nature.png`). Names come from the compile-time
+    /// asset manifest so new characters need no Rust changes.
     pub npc_sprites: HashMap<String, Handle<Image>>,
     /// Tileset textures, keyed by filename stem (e.g. "town_tileset" for
     /// `textures/tilesets/town_tileset.png`). Scenes look these up by the
@@ -75,41 +75,22 @@ fn spawn_loading_screen(mut commands: Commands, asset_server: Res<AssetServer>) 
     });
 }
 
-/// Scan a directory on disk for `.png` files and load each one through the
-/// asset server, keyed by filename stem. Mirrors the direct-filesystem idiom
-/// `map_data.rs` uses for reading map JSON, rather than requiring every asset
-/// to be registered by hand.
-fn scan_and_load_pngs(
-    disk_dir: &str,
+/// Load every PNG named by the compile-time manifest through the asset
+/// server, keyed by filename stem. Discovery happens in build.rs (which
+/// scans the directory), not here at runtime, so this works identically on
+/// native and wasm; new art still needs no Rust changes, just a rebuild.
+fn load_manifest_pngs(
+    stems: &[&str],
     asset_dir: &str,
     asset_server: &AssetServer,
 ) -> HashMap<String, Handle<Image>> {
-    let mut handles = HashMap::new();
-
-    let entries = match fs::read_dir(disk_dir) {
-        Ok(entries) => entries,
-        Err(e) => {
-            error!("Failed to read asset directory {}: {}", disk_dir, e);
-            return handles;
-        }
-    };
-
-    for entry in entries.flatten() {
-        let path = entry.path();
-
-        if path.extension().and_then(|ext| ext.to_str()) != Some("png") {
-            continue;
-        }
-
-        let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
-            continue;
-        };
-
-        let asset_path = format!("{asset_dir}/{stem}.png");
-        handles.insert(stem.to_string(), asset_server.load(asset_path));
-    }
-
-    handles
+    stems
+        .iter()
+        .map(|stem| {
+            let asset_path = format!("{asset_dir}/{stem}.png");
+            (stem.to_string(), asset_server.load(asset_path))
+        })
+        .collect()
 }
 
 fn start_asset_loading(
@@ -120,13 +101,13 @@ fn start_asset_loading(
 
     game_assets.player_sprite = asset_server.load("textures/characters/Amy-Walking.png");
 
-    game_assets.npc_sprites = scan_and_load_pngs(
-        "assets/textures/characters",
+    game_assets.npc_sprites = load_manifest_pngs(
+        asset_manifest::CHARACTER_SPRITES,
         "textures/characters",
         &asset_server,
     );
-    game_assets.tilesets = scan_and_load_pngs(
-        "assets/textures/tilesets",
+    game_assets.tilesets = load_manifest_pngs(
+        asset_manifest::TILESETS,
         "textures/tilesets",
         &asset_server,
     );
