@@ -56,8 +56,8 @@ fn spawn_loading_screen(mut commands: Commands, asset_server: Res<AssetServer>) 
         parent.spawn((
             Text::new("The Endgame of SRE"),
             TextFont {
-                font: asset_server.load("fonts/dialogue.ttf"),
-                font_size: 48.0,
+                font: asset_server.load("fonts/dialogue.ttf").into(),
+                font_size: FontSize::Px(48.0),
                 ..default()
             },
             TextColor(Color::WHITE),
@@ -66,8 +66,8 @@ fn spawn_loading_screen(mut commands: Commands, asset_server: Res<AssetServer>) 
         parent.spawn((
             Text::new("Loading..."),
             TextFont {
-                font: asset_server.load("fonts/dialogue.ttf"),
-                font_size: 24.0,
+                font: asset_server.load("fonts/dialogue.ttf").into(),
+                font_size: FontSize::Px(24.0),
                 ..default()
             },
             TextColor(Color::srgb(0.7, 0.7, 0.7)),

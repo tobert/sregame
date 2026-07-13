@@ -195,8 +195,8 @@ fn spawn_dialogue_ui(
                 SpeakerNameNode,
                 Text::new(first.speaker.clone()),
                 TextFont {
-                    font: font.clone(),
-                    font_size: 52.0,
+                    font: font.clone().into(),
+                    font_size: FontSize::Px(52.0),
                     ..default()
                 },
                 TextColor(Color::srgb(1.0, 0.85, 0.3)),
@@ -206,12 +206,12 @@ fn spawn_dialogue_ui(
                 DialogueTextNode,
                 Text::new(""),
                 TextFont {
-                    font: font.clone(),
-                    font_size: 46.0,
+                    font: font.clone().into(),
+                    font_size: FontSize::Px(46.0),
                     ..default()
                 },
                 TextColor(Color::WHITE),
-                TextLayout::new_with_justify(Justify::Left),
+                TextLayout::justify(Justify::Left),
                 TypewriterEffect::new(first.text.clone()),
             ));
         });

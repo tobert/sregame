@@ -22,7 +22,7 @@ mod instrumentation;
 mod transitions;
 mod depth;
 
-use game_state::{GameState, GameStatePlugin, Mode, Scene};
+use game_state::{GameState, GameStatePlugin, Mode};
 use assets::AssetsPlugin;
 use player::PlayerPlugin;
 use camera::{CameraPlugin, MainCamera, CameraFollow};
@@ -295,6 +295,7 @@ fn exit_after_n_frames_or_seconds(
 mod tests {
     use super::*;
     use bevy::state::app::StatesPlugin;
+    use crate::game_state::Scene;
 
     #[derive(Resource, Default)]
     struct TownEnterCount(u32);
