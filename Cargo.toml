@@ -36,6 +36,12 @@ bevy_brp_extras = "0.21"
 # render from a plain atlas texture instead. Native keeps the default path.
 bevy_ecs_tilemap = { version = "0.19", features = ["atlas"] }
 
+# Bevy CLI web builds: always run wasm-opt on release bundles (needs
+# binaryen installed; the CLI's supposed-default didn't fire without this).
+# 2026-07-13 measurement: 79M -> 41M raw, 10.8M gzipped.
+[package.metadata.bevy_cli.web.release]
+wasm-opt = true
+
 # Faster compile times during development
 [profile.dev]
 opt-level = 1
