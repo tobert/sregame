@@ -346,6 +346,10 @@ fn handle_interaction_input(
     };
 
     let player_pos = player_transform.translation.truncate();
+    // Tile logic uses the collision-box center, not the sprite center: the
+    // sprite center can sit inside a wall/table row when pressed flush
+    // against it (see player::logical_position).
+    let logical_pos = crate::player::logical_position(player_pos);
 
     // An action exit under the player - or on the tile they're facing
     // (both activate it, see check_map_exits) - owns the E press. Without
@@ -353,7 +357,7 @@ fn handle_interaction_input(
     // both the scripted scene AND that NPC's dialogue in the same frame
     // (kaibo review 2026-07-12).
     if let (Some(exits), Some(map)) = (&map_exits, &collision_map) {
-        let (tile_x, tile_y) = crate::map_data::world_to_tile(player_pos, map.width, map.height);
+        let (tile_x, tile_y) = crate::map_data::world_to_tile(logical_pos, map.width, map.height);
         let (dx, dy) = player_facing.tile_delta();
         let claims_press = exits.0.iter().any(|exit| {
             exit.trigger == crate::map_data::ExitTrigger::Action
@@ -389,7 +393,7 @@ fn handle_interaction_input(
     let closest_npc = closest_npc.or_else(|| {
         let map = collision_map.as_ref()?;
         let (dx, dy) = player_facing.tile_delta();
-        let (px, py) = crate::map_data::world_to_tile(player_pos, map.width, map.height);
+        let (px, py) = crate::map_data::world_to_tile(logical_pos, map.width, map.height);
         if !map.is_counter(px + dx, py + dy) {
             return None;
         }

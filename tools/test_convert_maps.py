@@ -164,17 +164,19 @@ def test_retro_table_trigger_widens_across_the_gap() -> None:
     data = fresh_retro_clean_data()
     check("applied to retro", cm.add_retro_table_affordance(data, "team_marathon_retro.json"), True)
 
-    scene_exits = [e for e in data["exits"]
-                   if e["target_scene"] == "End" and e["dialogue"]]
+    scene_exits = [e for e in data["exits"] if e["dialogue"]]
     tiles = sorted((e["trigger_x"], e["trigger_y"]) for e in scene_exits)
     check("scene fires across the gap", tiles, [(11, 12), (12, 12), (13, 12)])
     for e in scene_exits:
         check("same scene on every tile", e["dialogue"], scene_exits[0]["dialogue"])
         check("gap exits are action", e["trigger"], "action")
+        check("scene-only: player stays at the table", e["target_scene"], "")
 
-    # The stairs EXIT and the town door must be untouched.
-    check("stairs exit intact",
-          [e for e in data["exits"] if (e["trigger_x"], e["trigger_y"]) == (2, 9)][0]["dialogue"], [])
+    # The stairs EXIT keeps its transfer to End (the only route there now)
+    # and the town door is untouched.
+    stairs = [e for e in data["exits"] if (e["trigger_x"], e["trigger_y"]) == (2, 9)][0]
+    check("stairs exit intact", stairs["dialogue"], [])
+    check("stairs still go to End", stairs["target_scene"], "End")
     check("indicators", data["indicators"], [list(t) for t in cm.RETRO_INDICATORS])
 
 

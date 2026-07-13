@@ -142,6 +142,25 @@ fn animate_door_departure(
     }
 }
 
+/// Converts an exit's dialogue data into the runtime segment form.
+fn dialogue_segments(
+    dialogue: &[crate::map_data::DialogueSegmentData],
+) -> Vec<crate::dialogue::DialogueSegment> {
+    dialogue
+        .iter()
+        .map(|seg| crate::dialogue::DialogueSegment {
+            speaker: seg.speaker.clone(),
+            portrait_path: if seg.portrait.is_empty() {
+                String::new()
+            } else {
+                format!("textures/portraits/{}.png", seg.portrait)
+            },
+            portrait_face_index: seg.face_index,
+            text: seg.text.clone(),
+        })
+        .collect()
+}
+
 fn check_map_exits(
     mut commands: Commands,
     player_query: Query<(&Transform, &crate::player::Facing), With<Player>>,
@@ -174,7 +193,7 @@ fn check_map_exits(
     };
 
     let (tile_x, tile_y) = world_to_tile(
-        player_transform.translation.truncate(),
+        crate::player::logical_position(player_transform.translation.truncate()),
         collision_map.width,
         collision_map.height,
     );
@@ -214,6 +233,21 @@ fn check_map_exits(
             continue;
         }
 
+        // A scripted scene with NO destination ("scene-only": the
+        // retrospective at the retro table) just plays where the player
+        // stands - no transfer, no scene lookup. Leaving the room is its
+        // own action (the inn stairs).
+        if !exit.dialogue.is_empty() && exit.target_scene.is_empty() {
+            info!(
+                "Player triggered scene at tile ({}, {}) - no transfer",
+                exit.trigger_x, exit.trigger_y
+            );
+            dialogue_events.write(crate::dialogue::StartDialogueEvent {
+                segments: dialogue_segments(&exit.dialogue),
+            });
+            break;
+        }
+
         let Some(target_scene) = scene_from_str(&exit.target_scene) else {
             error!(
                 "Map exit at ({}, {}) references unknown scene '{}' - ignoring",
@@ -235,21 +269,9 @@ fn check_map_exits(
         });
 
         if !exit.dialogue.is_empty() {
-            let segments = exit
-                .dialogue
-                .iter()
-                .map(|seg| crate::dialogue::DialogueSegment {
-                    speaker: seg.speaker.clone(),
-                    portrait_path: if seg.portrait.is_empty() {
-                        String::new()
-                    } else {
-                        format!("textures/portraits/{}.png", seg.portrait)
-                    },
-                    portrait_face_index: seg.face_index,
-                    text: seg.text.clone(),
-                })
-                .collect();
-            dialogue_events.write(crate::dialogue::StartDialogueEvent { segments });
+            dialogue_events.write(crate::dialogue::StartDialogueEvent {
+                segments: dialogue_segments(&exit.dialogue),
+            });
             commands.insert_resource(PendingTransferAfterDialogue {
                 target_scene,
                 spawn_x: exit.target_spawn_x,
@@ -353,6 +375,74 @@ mod tests {
         vec![
             ExitData { trigger_x: 12, trigger_y: 12, target_scene: "End".into(), target_spawn_x: 8, target_spawn_y: 5, trigger: ExitTrigger::Action, dialogue: vec![], cancel_on_escape: false },
         ]
+    }
+
+    /// Amy's repro: "walking all the way to the table does not work, but
+    /// bumping back just a touch does." Pressed flush against a blocked row
+    /// from the south, collision lets the SPRITE center penetrate up to 8px
+    /// into that row (feet-anchored box, head-overlaps-wall perspective) -
+    /// so a sprite-center tile lookup reported the player as standing IN
+    /// the table row and the action exit under their feet stopped matching.
+    /// The logical tile must come from the collision box center.
+    #[test]
+    fn action_exit_fires_when_pressed_flush_against_the_blocked_row() {
+        let mut world = setup_world((12, 12), retro_action_exit(), 24, 21);
+        // Reproduce the flush pose: sprite center 8px INSIDE row 11
+        // (one tile north of the trigger row), exactly where movement
+        // stops when walking up into the table.
+        let flush_y = tile_to_world(12, 11, 24, 21).y - 16.0;
+        let player = world
+            .query_filtered::<Entity, With<Player>>()
+            .single(&world)
+            .unwrap();
+        world.get_mut::<Transform>(player).unwrap().translation.y = flush_y;
+        world
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::KeyE);
+
+        world.run_system_once(check_map_exits).unwrap();
+
+        let next = world.resource::<NextState<Scene>>();
+        assert!(
+            matches!(next, NextState::Pending(Scene::End)),
+            "E flush against the table must still fire the exit, got {next:?}"
+        );
+    }
+
+    /// A scripted scene with no destination (the retrospective, since Amy
+    /// decided the player should stay at the table): the dialogue plays and
+    /// NOTHING is transferred, immediately or deferred.
+    #[test]
+    fn scene_only_exit_plays_dialogue_without_transferring() {
+        let mut exits = retro_action_exit();
+        exits[0].target_scene = String::new();
+        exits[0].dialogue = vec![crate::map_data::DialogueSegmentData {
+            speaker: "Nyaanager Evie".into(),
+            portrait: "Nature".into(),
+            face_index: 4,
+            text: "Thanks for helping us with this incident Amy.".into(),
+        }];
+        let mut world = setup_world((12, 12), exits, 24, 21);
+        world
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::KeyE);
+
+        world.run_system_once(check_map_exits).unwrap();
+
+        let sent = world
+            .resource::<Messages<crate::dialogue::StartDialogueEvent>>()
+            .iter_current_update_messages()
+            .count();
+        assert_eq!(sent, 1, "the scene should play");
+        assert!(
+            matches!(world.resource::<NextState<Scene>>(), NextState::Unchanged),
+            "scene-only exits must not transfer"
+        );
+        assert!(world.get_resource::<PendingArrival>().is_none());
+        assert!(
+            world.get_resource::<PendingTransferAfterDialogue>().is_none(),
+            "no deferred transfer either - the player stays at the table"
+        );
     }
 
     /// RPGMaker's checkEventTriggerThere: an action event also activates

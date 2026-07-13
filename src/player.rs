@@ -306,6 +306,19 @@ const COLLIDER_HALF: Vec2 = Vec2::new(14.0, 8.0);
 /// implies. Overlaps between characters are depth-sorted (see depth.rs).
 const COLLIDER_OFFSET: Vec2 = Vec2::new(0.0, -16.0);
 
+/// The point that decides which tile the player logically occupies: the
+/// collision box center, NOT the sprite center. Walking north, collision
+/// lets the sprite center penetrate up to 8px into the blocked row (the
+/// head-overlaps-the-wall-face perspective effect above) - deriving the
+/// tile from the sprite center then reports the player as standing INSIDE
+/// the wall/table row, and interactions like action exits stop matching
+/// (Amy's report: E did nothing flush against the retro table, but worked
+/// after "bumping back just a touch"). The box center always stays inside
+/// the true standing tile.
+pub fn logical_position(translation: Vec2) -> Vec2 {
+    translation + COLLIDER_OFFSET
+}
+
 /// Attempts one axis-aligned sub-tile move of the collision box: the two
 /// leading corners each check their own tile crossing through canPass.
 /// Returns the first blocking tile on failure (for bump-triggered exits).

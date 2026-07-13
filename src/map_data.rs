@@ -546,16 +546,9 @@ mod tests {
         // itself. The stairs EXIT at (2,9) gets an indicator too.
         let map = MapData::load("team_marathon_retro").expect("retro map should load");
 
-        let mut scene_tiles: Vec<(u32, u32)> = map
-            .exits
-            .iter()
-            .filter(|e| {
-                e.target_scene == "End"
-                    && e.trigger == ExitTrigger::Action
-                    && !e.dialogue.is_empty()
-            })
-            .map(|e| (e.trigger_x, e.trigger_y))
-            .collect();
+        let scene_exits: Vec<_> = map.exits.iter().filter(|e| !e.dialogue.is_empty()).collect();
+        let mut scene_tiles: Vec<(u32, u32)> =
+            scene_exits.iter().map(|e| (e.trigger_x, e.trigger_y)).collect();
         scene_tiles.sort();
         assert_eq!(
             scene_tiles,
@@ -563,20 +556,24 @@ mod tests {
             "the retrospective must fire from anywhere in the open table gap"
         );
 
-        // All three copies carry the identical scene.
-        let scenes: Vec<_> = map
-            .exits
-            .iter()
-            .filter(|e| e.target_scene == "End" && !e.dialogue.is_empty())
-            .map(|e| e.dialogue.len())
-            .collect();
-        assert!(scenes.windows(2).all(|w| w[0] == w[1]), "widened triggers must share the scene");
-
-        // The retrospective must NOT be cancelable: skipping the scene with
-        // Escape still transfers (nobody gets stranded mid-climax).
-        for exit in map.exits.iter().filter(|e| e.target_scene == "End" && !e.dialogue.is_empty()) {
-            assert!(!exit.cancel_on_escape);
+        for exit in &scene_exits {
+            assert_eq!(exit.trigger, ExitTrigger::Action);
+            // Amy's call: the conversation leaves the player at the table.
+            // Reaching the End room is the inn stairs' job.
+            assert_eq!(exit.target_scene, "", "the retrospective must not transfer");
+            assert_eq!(
+                exit.dialogue.len(),
+                scene_exits[0].dialogue.len(),
+                "widened triggers must share the scene"
+            );
         }
+
+        // The stairs are the one and only route to End.
+        let end_exits: Vec<_> =
+            map.exits.iter().filter(|e| e.target_scene == "End").collect();
+        assert_eq!(end_exits.len(), 1, "exactly one way to End: the inn stairs");
+        assert_eq!((end_exits[0].trigger_x, end_exits[0].trigger_y), (2, 9));
+        assert_eq!(end_exits[0].trigger, ExitTrigger::Action);
 
         assert!(
             map.indicators.contains(&(12, 11)),

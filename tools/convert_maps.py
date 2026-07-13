@@ -726,12 +726,14 @@ RETRO_INDICATORS = ((12, 11), (2, 9))
 
 
 def add_retro_table_affordance(clean_data, output_name):
-    """Make the retrospective discoverable (Amy's playtest note: it fired
-    only on one unmarked tile below the parchment graphic). Widens the
-    authored (12,12) action exit across the whole open table gap - same
-    scene on every tile - and drops pulsing indicators on the parchment
-    graphic and the stairs EXIT. Mutates clean_data in place; returns True
-    if applied."""
+    """Make the retrospective discoverable and non-warping (Amy's playtest
+    notes: it fired only on one unmarked tile below the parchment graphic,
+    and yanked the player to End when the conversation closed). Widens the
+    authored (12,12) action exit across the whole open table gap, strips
+    the transfer from all of them (scene-only: the player stays at the
+    table; the inn stairs at (2,9) are the actual way to the End room), and
+    drops pulsing indicators on the parchment graphic and the stairs.
+    Mutates clean_data in place; returns True if applied."""
     if output_name != "team_marathon_retro.json":
         return False
 
@@ -739,6 +741,7 @@ def add_retro_table_affordance(clean_data, output_name):
         e for e in clean_data['exits']
         if (e['trigger_x'], e['trigger_y']) == (12, 12) and e['trigger'] == 'action'
     )
+    table_exit['target_scene'] = ""
     for (x, y) in RETRO_TABLE_GAP:
         widened = dict(table_exit)
         widened['trigger_x'] = x

@@ -2513,7 +2513,7 @@
     {
       "trigger_x": 12,
       "trigger_y": 12,
-      "target_scene": "End",
+      "target_scene": "",
       "target_spawn_x": 8,
       "target_spawn_y": 5,
       "trigger": "action",
@@ -2613,7 +2613,7 @@
     {
       "trigger_x": 11,
       "trigger_y": 12,
-      "target_scene": "End",
+      "target_scene": "",
       "target_spawn_x": 8,
       "target_spawn_y": 5,
       "trigger": "action",
@@ -2713,7 +2713,7 @@
     {
       "trigger_x": 13,
       "trigger_y": 12,
-      "target_scene": "End",
+      "target_scene": "",
       "target_spawn_x": 8,
       "target_spawn_y": 5,
       "trigger": "action",
