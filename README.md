@@ -1,8 +1,15 @@
 # The Endgame of SRE
 
-A Bevy-based educational game teaching SRE principles through a pixel art visual novel experience.
+A short educational game teaching SRE principles through a pixel art visual novel experience.
 
-Originally presented as the [SREcon23 Americas keynote](https://www.youtube.com/watch?v=BEs6j-BOl20) and built with RPGMaker MZ, this version is a complete rewrite in Rust using the Bevy game engine (0.19).
+Originally presented at [QCon SF 2022](https://qconsf.com/speakers/amytobey)
+and the [SREcon23 Americas keynote](https://www.youtube.com/watch?v=BEs6j-BOl20). Originally
+built with RPGMaker MZ, this version is a rewrite in Rust using the Bevy game engine (0.19).
+
+The game was intended for a single talk following a single well-practiced path, so there will
+be some weird interactions if you do not follow that exact path. The main example being the
+inn, if you interact with the characters around the table they have their old dialog. If you
+interact with the map at the table you get the dialog that was presented.
 
 ## About
 
@@ -20,42 +27,15 @@ Originally presented as the [SREcon23 Americas keynote](https://www.youtube.com/
 
 ## Quick Start
 
-### Play on Linux
-
-```bash
-cargo run
-```
-
-### Play on Windows (Cross-Compiled from Linux)
-
-Build the Windows version from Linux/WSL:
-
-```bash
-./build-windows.sh
-```
-
-The executable will be at `target/x86_64-pc-windows-msvc/debug/sregame.exe`
-
-## Development
-
 ### Prerequisites
 
 - Rust toolchain (2024 edition)
 - For Windows builds: `cargo xwin` (`cargo install cargo-xwin`)
-- For automatic sync: HalfRemembered Launcher
 
-### Building Locally
+### Play on Linux
 
 ```bash
-# Debug build (faster compilation)
-cargo build
-
-# Run directly
 cargo run
-
-# Release build (better performance)
-cargo build --release
-cargo run --release
 ```
 
 ### Building for the Web (WebAssembly)
@@ -74,18 +54,6 @@ bevy run web
 # Deployable static bundle (wasm-opt'd) in target/bevy_web/web-release/sregame/
 bevy build --release web --bundle
 ```
-
-Web-relevant design notes:
-
-- **WebGL2 is the compatibility floor** — don't enable Bevy's `webgpu`
-  feature. WebGL2 has no texture arrays, so the wasm target compiles
-  `bevy_ecs_tilemap` with its `atlas` feature (see `Cargo.toml`).
-- Browsers have no filesystem: map JSON and asset discovery are embedded at
-  compile time by `build.rs` (see `src/asset_manifest.rs`). PNGs/fonts load
-  through the `AssetServer` (HTTP fetch on web).
-- Telemetry (OTLP/tokio) and the BRP dev server are native-only; the wasm
-  entry point is `web_main` in `src/main.rs`.
-- `./scripts/check-wasm.sh` is the compile gate — run it like the tests.
 
 ### Cross-Compiling for Windows
 
@@ -106,131 +74,13 @@ The script will:
 
 Output: `target/x86_64-pc-windows-msvc/debug/sregame.exe` (and `.dll` files)
 
-## Automatic Sync with HalfRemembered Launcher
-
-This project is configured to automatically sync builds and assets to Windows clients using [HalfRemembered Launcher](https://github.com/atobey/halfremembered-launcher), an SSH-based RPC system for pushing files to remote machines.
-
-### Setup
-
-1. **Start the HalfRemembered server** (on your build machine):
-
-   ```bash
-   # In the halfremembered-launcher directory
-   cargo run --bin halfremembered-launcher server --port 20222
-   ```
-
-2. **Start the client daemon** (on your Windows machine):
-
-   ```bash
-   # Connect to the server
-   halfremembered-launcher client --server your-build-machine:20222
-   ```
-
-3. **Configure filesystem watching** (on your build machine):
-
-   ```bash
-   # From the sregame directory
-   halfremembered-launcher config-sync --server localhost:20222
-   ```
-
-   This uses the `.hrlauncher.toml` config to set up automatic syncing.
-
-### How It Works
-
-The `.hrlauncher.toml` configuration defines two sync targets:
-
-1. **Windows Binaries** - Syncs the .exe and .dll files to Windows clients
-   - Watches: `target/x86_64-pc-windows-msvc/debug/sregame.exe` and `*.dll`
-   - Destination: Current directory on Windows client
-   - Target: Only `windows-*` clients
-
-2. **Game Assets** - Syncs textures, fonts, and data files
-   - Watches: `assets/**/*` (recursive)
-   - Excludes: Source files like `.psd`, `.blend`
-   - Destination: `assets/` directory on client
-   - Mirror mode: Keeps assets directory clean (deletes removed files)
-
-### Development Workflow
-
-Once configured, your workflow becomes:
-
-```bash
-# 1. Edit code and assets on Linux
-vim src/player.rs
-gimp assets/player.png
-
-# 2. Build for Windows
-./build-windows.sh
-
-# 3. Files automatically sync to Windows client
-#    (HalfRemembered detects changes and pushes immediately)
-
-# 4. Run on Windows
-#    The client receives files and you can test immediately
-```
-
-No manual copying, no rsync scripts, no waiting!
-
-### Manual Sync (Alternative)
-
-If you prefer manual syncing or don't want to use HalfRemembered Launcher:
-
-```bash
-# Edit sync-to-windows.sh with your Windows machine's IP
-vim sync-to-windows.sh
-
-# Run manual sync via rsync
-./sync-to-windows.sh
-```
-
-## Project Structure
-
-```
-sregame/
-├── src/
-│   ├── main.rs           # Entry point and app setup
-│   ├── game_state.rs     # Game state management
-│   ├── player.rs         # Player movement and controls
-│   ├── camera.rs         # Camera follow system
-│   ├── tilemap.rs        # Tilemap rendering
-│   ├── dialogue.rs       # Dialogue system
-│   ├── npc.rs            # NPC interactions
-│   └── assets.rs         # Asset loading
-├── assets/               # Game assets (textures, fonts, etc.)
-├── build-plan/           # Implementation guides (see 00-overview.md)
-├── .hrlauncher.toml      # HalfRemembered Launcher sync config
-├── build-windows.sh      # Cross-compile for Windows
-└── sync-to-windows.sh    # Manual rsync script (legacy)
-```
-
-## Build Plan
-
-Detailed implementation guides are available in `build-plan/`:
-
-1. Start with `build-plan/00-overview.md` for the complete roadmap
-2. Follow steps 01-09 sequentially
-3. Each step includes code examples, testing procedures, and success criteria
-
-Estimated time: 12-40 hours depending on Rust/Bevy experience
-
-## Contributing
-
-This is an educational project. See `BOTS.md` for coding guidelines and AI agent context.
-
-**Key Guidelines:**
-- Use `anyhow::Result` for error handling (never `unwrap()`)
-- Follow Bevy 0.19 best practices (required components, state management)
-- Prioritize clarity over performance
-- Add `Co-authored-by` lines to commits when working with AI assistants
-
 ## License
 
 See `LICENSE` file.
 
 ## References
 
-- Original RPGMaker version: `/home/atobey/src/endgame-of-sre-rpgmaker-mz/`
 - SREcon23 Americas keynote recording: https://www.youtube.com/watch?v=BEs6j-BOl20
 - USENIX presentation page: https://www.usenix.org/conference/srecon23americas/presentation/tobey
 - Bevy Engine: https://bevyengine.org
-- HalfRemembered Launcher: https://github.com/atobey/halfremembered-launcher
+- VisuStella MZ Sample Game Project: https://visustella.itch.io/visumz-sample
