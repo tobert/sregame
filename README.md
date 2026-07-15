@@ -84,9 +84,20 @@ The script will:
 
 Output: `target/x86_64-pc-windows-msvc/debug/sregame.exe` (and `.dll` files)
 
-## License
+## License & Credits
 
-See `LICENSE` file.
+The **code** in this repository is MIT licensed — see the `LICENSE` file.
+
+The **art assets** (tilesets, character sprites, portraits) are **not** covered
+by the MIT license. They are from the VisuStella Fantasy Tiles MZ resource pack,
+purchased via [itch.io](https://visustella.itch.io/), and remain the property of
+VisuStella, used here under their EULA (no redistribution outside of playable
+game projects — see `licenses/VisuStella-Fantasy-Tiles-EULA.pdf` for the EULA
+as shipped with the pack). Do not copy the contents of `assets/textures/` into
+your own projects.
+
+This game uses the VISUSTELLA™: Fantasy Tiles resource pack.
+Copyright (C) 2020 VISUSTELLA™
 
 ## References
 
