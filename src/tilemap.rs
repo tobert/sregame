@@ -395,8 +395,6 @@ fn spawn_map(
         camera_follow.bounds = Some(CameraBounds::from_map_size(
             map_width_pixels,
             map_height_pixels,
-            crate::camera::VIEW_WIDTH / 2.0,
-            crate::camera::VIEW_HEIGHT / 2.0,
         ));
     }
 

@@ -294,7 +294,10 @@ fn setup(mut commands: Commands) {
         MainCamera,
         CameraFollow::default(),
         Projection::Orthographic(OrthographicProjection {
-            scale: 1.0 / camera::CAMERA_ZOOM,
+            scaling_mode: bevy::camera::ScalingMode::AutoMin {
+                min_width: camera::VIEW_WIDTH,
+                min_height: camera::VIEW_HEIGHT,
+            },
             ..OrthographicProjection::default_2d()
         }),
         Transform::from_xyz(0.0, 0.0, 999.9),

@@ -2,16 +2,17 @@ use bevy::prelude::*;
 use crate::game_state::GameState;
 use crate::player::Player;
 
-/// The game shows a 960x540 world-unit view upscaled 2x onto the 1920x1080
-/// window - the pixel-art "2x" look, and character/tile proportions matching
-/// the RPGMaker original (~20x11 tiles on screen). Zoom lives on the camera
-/// projection (scale = 1/CAMERA_ZOOM); sprites and tiles both render at
-/// their natural 48px world size. An earlier version instead scaled sprite
+/// The game is designed around a 960x540 world-unit view - character/tile
+/// proportions matching the RPGMaker original (~20x11 tiles on screen).
+/// The camera projection uses `ScalingMode::AutoMin` with these dimensions,
+/// so the full design view always fits the window: 2x pixel art on a
+/// 1920x1080 window, scaled down to fit smaller canvases (e.g. the game
+/// embedded inline in a blog post). Sprites and tiles both render at their
+/// natural 48px world size. An earlier version instead scaled sprite
 /// entities 2x with an unzoomed camera, which made characters two tiles
 /// tall and the view twice as wide as intended.
 pub const VIEW_WIDTH: f32 = 960.0;
 pub const VIEW_HEIGHT: f32 = 540.0;
-pub const CAMERA_ZOOM: f32 = 2.0;
 
 pub struct CameraPlugin;
 
@@ -41,38 +42,37 @@ impl Default for CameraFollow {
     }
 }
 
+/// Half-extents of the current map, centered on the origin. The camera
+/// half-extents are NOT baked in here: the visible area varies with window
+/// size (AutoMin scaling), so clamping reads the projection's computed area
+/// each frame instead of assuming the 960x540 design view.
 #[derive(Clone, Copy)]
 pub struct CameraBounds {
-    pub min_x: f32,
-    pub max_x: f32,
-    pub min_y: f32,
-    pub max_y: f32,
+    pub map_half_width: f32,
+    pub map_half_height: f32,
 }
 
 impl CameraBounds {
-    pub fn from_map_size(width: f32, height: f32, camera_half_width: f32, camera_half_height: f32) -> Self {
-        let min_x = -width / 2.0 + camera_half_width;
-        let max_x = width / 2.0 - camera_half_width;
-        let min_y = -height / 2.0 + camera_half_height;
-        let max_y = height / 2.0 - camera_half_height;
-
+    pub fn from_map_size(width: f32, height: f32) -> Self {
         Self {
-            min_x: min_x.min(max_x),
-            max_x: max_x.max(min_x),
-            min_y: min_y.min(max_y),
-            max_y: max_y.max(min_y),
+            map_half_width: width / 2.0,
+            map_half_height: height / 2.0,
         }
     }
 
-    fn clamp(&self, mut position: Vec3) -> Vec3 {
-        position.x = position.x.clamp(self.min_x, self.max_x);
-        position.y = position.y.clamp(self.min_y, self.max_y);
+    /// Keep the view inside the map; if the view is larger than the map on
+    /// an axis, pin the camera to the map's center on that axis.
+    fn clamp(&self, mut position: Vec3, camera_half_size: Vec2) -> Vec3 {
+        let max_x = (self.map_half_width - camera_half_size.x).max(0.0);
+        let max_y = (self.map_half_height - camera_half_size.y).max(0.0);
+        position.x = position.x.clamp(-max_x, max_x);
+        position.y = position.y.clamp(-max_y, max_y);
         position
     }
 }
 
 fn camera_follow_player(
-    mut camera_query: Query<(&mut Transform, &CameraFollow), (With<MainCamera>, Without<Player>)>,
+    mut camera_query: Query<(&mut Transform, &CameraFollow, &Projection), (With<MainCamera>, Without<Player>)>,
     player_query: Query<&Transform, With<Player>>,
     time: Res<Time>,
 ) {
@@ -80,7 +80,7 @@ fn camera_follow_player(
         return;
     };
 
-    let Ok((mut camera_transform, follow_config)) = camera_query.single_mut() else {
+    let Ok((mut camera_transform, follow_config, projection)) = camera_query.single_mut() else {
         return;
     };
 
@@ -88,7 +88,10 @@ fn camera_follow_player(
     target.z = 999.9;
 
     if let Some(bounds) = follow_config.bounds {
-        target = bounds.clamp(target);
+        let Projection::Orthographic(ortho) = projection else {
+            return;
+        };
+        target = bounds.clamp(target, ortho.area.half_size());
     }
 
     let lerp_factor = follow_config.smoothness * time.delta_secs();
